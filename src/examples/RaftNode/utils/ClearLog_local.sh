@@ -1,4 +1,4 @@
-rm Node1/*
-rm Node2/*
-rm Node3/*
+rm node1/*
+rm node2/*
+rm node3/*
 echo "Done"

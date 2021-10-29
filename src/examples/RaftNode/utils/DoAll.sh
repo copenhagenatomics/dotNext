@@ -1,7 +1,10 @@
 echo "Building project"
 set -e
-bash publish_arm.sh
+
+HOSTS=config/hosts.txt
+
+bash utils/publish_arm.sh
 set +e
-bash ClearLog_remote.sh
-bash upload_app.sh    
-bash upload_config.sh
+bash utils/ClearLog_remote.sh $HOSTS
+bash utils/upload_app.sh $HOSTS
+bash utils/upload_config.sh $HOSTS

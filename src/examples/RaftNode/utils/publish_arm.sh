@@ -1,3 +1,3 @@
 set -x
 
-dotnet publish -r linux-arm --framework net5.0
+dotnet publish -r linux-arm --framework net6.0
