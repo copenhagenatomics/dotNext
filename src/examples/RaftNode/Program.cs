@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging.Console;
 using RaftNode;
 using SslOptions = DotNext.Net.Security.SslOptions;
 
+Console.WriteLine("starting application");
 switch (args.LongLength)
 {
     case 0:
@@ -21,6 +22,10 @@ switch (args.LongLength)
     case 3:
         await StartNode(args[0], int.Parse(args[1]), args[2]);
         break;
+    case 4:
+        await StartNode(args[0], int.Parse(args[1]), args[2], args[3]);
+        break;
+    
 }
 
 static Task UseAspNetCoreHost(int port, string? persistentStorage = null)
@@ -53,9 +58,9 @@ static Task UseAspNetCoreHost(int port, string? persistentStorage = null)
     .RunAsync();
 }
 
-static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string? persistentStorage)
+static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string? persistentStorage, TestConfiguration? testCfg = null)
 {
-    AddMembersToCluster(config.UseInMemoryConfigurationStorage());
+    AddMembersToCluster(config.UseInMemoryConfigurationStorage(), persistentStorage, testCfg);
     var loggerFactory = new LoggerFactory();
     var loggerOptions = new ConsoleLoggerOptions
     {
@@ -82,18 +87,22 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
     await cluster.StopAsync(CancellationToken.None);
 
     // NOTE: this way of adding members to the cluster is not recommended in production code
-    static void AddMembersToCluster(InMemoryClusterConfigurationStorage<IPEndPoint> storage)
+    static void AddMembersToCluster(InMemoryClusterConfigurationStorage<IPEndPoint> storage, string? persistentStorage, TestConfiguration? testCfg = null)
     {
         var builder = storage.CreateActiveConfigurationBuilder();
-
-        var address = new IPEndPoint(IPAddress.Loopback, 3262);
-        builder.Add(ClusterMemberId.FromEndPoint(address), address);
-
-        address = new(IPAddress.Loopback, 3263);
-        builder.Add(ClusterMemberId.FromEndPoint(address), address);
-
-        address = new(IPAddress.Loopback, 3264);
-        builder.Add(ClusterMemberId.FromEndPoint(address), address);
+        
+        if ((testCfg is not null))
+        {
+            Console.WriteLine("creating member list");
+            foreach (var node in testCfg.NodeList)
+            {
+                //use ip of endpoint
+                var address = new IPEndPoint(new IPAddress(node.Value.ip_byte), node.Value.port);
+                //var address = new IPEndPoint(IPAddress.Loopback, 3262);
+                builder.Add(ClusterMemberId.FromEndPoint(address), address); 
+                Console.WriteLine($"Adding {node.Key} with address = {address}");
+            }
+        }
 
         builder.Build();
     }
@@ -111,18 +120,32 @@ static Task UseUdpTransport(int port, string? persistentStorage)
     return UseConfiguration(configuration, persistentStorage);
 }
 
-static Task UseTcpTransport(int port, string? persistentStorage, bool useSsl)
+static Task UseTcpTransport(int port, string? persistentStorage, bool useSsl, string? configPath = null)
 {
-    var configuration = new RaftCluster.TcpConfiguration(new IPEndPoint(IPAddress.Loopback, port))
+    var myConfig = new ConfigurationParser(configPath).config;
+    IPAddress ipaddr = new IPAddress(new byte[] { 0, 0, 0, 0 });
+    
+    //find ip of node from list
+    foreach (var node in myConfig.NodeList)
     {
-        LowerElectionTimeout = 150,
-        UpperElectionTimeout = 300,
-        TransmissionBlockSize = 4096,
+        if (node.Key == persistentStorage) 
+        {
+            ipaddr = new IPAddress(node.Value.ip_byte);
+        }
+    }
+
+    Console.WriteLine($"configuring cluster for node with ip: {ipaddr}");
+
+    var configuration = new RaftCluster.TcpConfiguration(new IPEndPoint(ipaddr, port))
+    {
+        LowerElectionTimeout = myConfig.LowerElectionTimeout,
+        UpperElectionTimeout = myConfig.UpperElectionTimeout,
+        TransmissionBlockSize = myConfig.TransmissionBlockSize,
         ColdStart = false,
         SslOptions = useSsl ? CreateSslOptions() : null
     };
 
-    return UseConfiguration(configuration, persistentStorage);
+    return UseConfiguration(configuration, persistentStorage, myConfig);
 
     static SslOptions CreateSslOptions()
     {
@@ -134,7 +157,7 @@ static Task UseTcpTransport(int port, string? persistentStorage, bool useSsl)
     }
 }
 
-static Task StartNode(string protocol, int port, string? persistentStorage = null)
+static Task StartNode(string protocol, int port, string? persistentStorage = null, string? configPath = null )
 {
     switch (protocol.ToLowerInvariant())
     {
@@ -144,7 +167,7 @@ static Task StartNode(string protocol, int port, string? persistentStorage = nul
         case "udp":
             return UseUdpTransport(port, persistentStorage);
         case "tcp":
-            return UseTcpTransport(port, persistentStorage, false);
+            return UseTcpTransport(port, persistentStorage, false, configPath);
         case "tcp+ssl":
             return UseTcpTransport(port, persistentStorage, true);
         default:

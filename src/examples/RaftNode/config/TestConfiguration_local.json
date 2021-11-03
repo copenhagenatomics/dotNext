@@ -1,0 +1,12 @@
+{"LowerElectionTimeout":150, 
+    "UpperElectionTimeout": 300, 
+    "TransmissionBlockSize": 4096,
+    "IsLocal":true, 
+    "NodeCount":3, 
+    "NodeList": 
+    {
+        "node1": {"ip":[127, 0, 0, 1], "port":3262}, 
+        "node2": {"ip":[127, 0, 0, 1], "port":3263}, 
+        "node3": {"ip":[127, 0, 0, 1], "port":3264}
+    }
+}
