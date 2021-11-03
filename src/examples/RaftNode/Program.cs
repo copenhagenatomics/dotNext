@@ -9,12 +9,19 @@ using Microsoft.Extensions.Logging.Console;
 using RaftNode;
 using SslOptions = DotNext.Net.Security.SslOptions;
 
-Console.WriteLine("starting application");
+
+
+
+AsyncWriter.WriteLine("starting application");
+
+
+
 switch (args.LongLength)
 {
     case 0:
     case 1:
-        Console.WriteLine("Port number and protocol are not specified");
+        AsyncWriter.performanceTest();
+        AsyncWriter.WriteLine("Port number and protocol are not specified");
         break;
     case 2:
         await StartNode(args[0], int.Parse(args[1]));
@@ -93,14 +100,14 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
         
         if ((testCfg is not null))
         {
-            Console.WriteLine("creating member list");
+            AsyncWriter.WriteLine("creating member list");
             foreach (var node in testCfg.NodeList)
             {
                 //use ip of endpoint
                 var address = new IPEndPoint(new IPAddress(node.Value.ip_byte), node.Value.port);
                 //var address = new IPEndPoint(IPAddress.Loopback, 3262);
                 builder.Add(ClusterMemberId.FromEndPoint(address), address); 
-                Console.WriteLine($"Adding {node.Key} with address = {address}");
+                AsyncWriter.WriteLine($"Adding {node.Key} with address = {address}");
             }
         }
 
@@ -134,7 +141,7 @@ static Task UseTcpTransport(int port, string? persistentStorage, bool useSsl, st
         }
     }
 
-    Console.WriteLine($"configuring cluster for node with ip: {ipaddr}");
+    AsyncWriter.WriteLine($"configuring cluster for node with ip: {ipaddr}");
 
     var configuration = new RaftCluster.TcpConfiguration(new IPEndPoint(ipaddr, port))
     {

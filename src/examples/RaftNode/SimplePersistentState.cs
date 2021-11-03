@@ -74,7 +74,7 @@ internal sealed class SimplePersistentState : PersistentState, ISupplier<long>
     {
         var value = await entry.ToTypeAsync<long, LogEntry>().ConfigureAwait(false);
         content.VolatileWrite(value);
-        Console.WriteLine($"Accepting value {value}");
+        AsyncWriter.WriteLine($"Accepting value {value}");
     }
 
     protected override ValueTask ApplyAsync(LogEntry entry)
@@ -82,7 +82,7 @@ internal sealed class SimplePersistentState : PersistentState, ISupplier<long>
 
     protected override SnapshotBuilder CreateSnapshotBuilder(in SnapshotBuilderContext context)
     {
-        Console.WriteLine("Building snapshot");
+        AsyncWriter.WriteLine("Building snapshot");
         return new SimpleSnapshotBuilder(context);
     }
 }

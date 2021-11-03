@@ -11,10 +11,10 @@ internal sealed class ClusterConfigurator : IClusterMemberLifetime
         Debug.Assert(cluster is IRaftCluster);
         var term = ((IRaftCluster)cluster).Term;
         var timeout = ((IRaftCluster)cluster).ElectionTimeout;
-        Console.WriteLine(leader is null
+        AsyncWriter.WriteLine(leader is null
             ? "Consensus cannot be reached"
             : $"New cluster leader is elected. Leader address is {leader.EndPoint}");
-        Console.WriteLine($"Term of local cluster member is {term}. Election timeout {timeout}");
+        AsyncWriter.WriteLine($"Term of local cluster member is {term}. Election timeout {timeout}");
     }
 
     public void OnStart(IRaftCluster cluster, IDictionary<string, string> metadata)
