@@ -1,5 +1,5 @@
-{"LowerElectionTimeout":500, 
-    "UpperElectionTimeout": 1000, 
+{"LowerElectionTimeout":150, 
+    "UpperElectionTimeout": 300, 
     "TransmissionBlockSize": 4096,
     "IsLocal":false, 
     "NodeCount":3, 

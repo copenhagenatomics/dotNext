@@ -51,6 +51,7 @@ internal sealed class Startup
             .AddOptions()
             .AddRouting();
 
+        services.AddSingleton<MetricsCollector, MyMetricsCollector>();
         var path = configuration[SimplePersistentState.LogLocation];
         if (!string.IsNullOrWhiteSpace(path))
         {

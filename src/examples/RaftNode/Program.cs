@@ -75,6 +75,9 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
     };
     loggerFactory.AddProvider(new ConsoleLoggerProvider(new FakeOptionsMonitor<ConsoleLoggerOptions>(loggerOptions)));
     config.LoggerFactory = loggerFactory;
+
+    config.Metrics = new MyMetricsCollector();
+
     using var cluster = new RaftCluster(config);
     cluster.LeaderChanged += ClusterConfigurator.LeaderChanged;
     var modifier = default(DataModifier?);
