@@ -145,9 +145,11 @@ static Task UseTcpTransport(int port, string? persistentStorage, bool useSsl, st
     }
 
     AsyncWriter.WriteLine($"configuring cluster for node with ip: {ipaddr}");
+    AsyncWriter.WriteLine($"lower = {myConfig.LowerElectionTimeout}, upper = {myConfig.UpperElectionTimeout}");
 
     var configuration = new RaftCluster.TcpConfiguration(new IPEndPoint(ipaddr, port))
     {
+        ConnectTimeout = 50,
         LowerElectionTimeout = myConfig.LowerElectionTimeout,
         UpperElectionTimeout = myConfig.UpperElectionTimeout,
         TransmissionBlockSize = myConfig.TransmissionBlockSize,

@@ -63,6 +63,7 @@ internal sealed class TcpServer : TcpTransport, IServer
             {
                 exchange.OnException(e);
                 result = ExchangeResult.SocketError;
+                Console.WriteLine(e);
             }
             catch (Exception e)
             {

@@ -18,25 +18,25 @@ sealed class MyMetricsCollector : MetricsCollector
 
     public override void MovedToLeaderState()
     {
-        //base.MovedToLeaderState();
-        //AsyncWriter.WriteLine("Moved to Leader State");
+        base.MovedToLeaderState();
+        AsyncWriter.WriteLine("Moved to Leader State");
     }
 
     public override void MovedToCandidateState()
     {
-        //base.MovedToCandidateState();
-        //AsyncWriter.WriteLine("Moved to Candidate State");
+        base.MovedToCandidateState();
+        AsyncWriter.WriteLine("Moved to Candidate State");
     }
 
     public override void MovedToFollowerState()
     {
-        //base.MovedToFollowerState();
-        //AsyncWriter.WriteLine("Moved to Follower State");
+        base.MovedToFollowerState();
+        AsyncWriter.WriteLine("Moved to Follower State");
     }
 
     public override void ReportHeartbeat()
     {
-        //AsyncWriter.Write(".");
+        AsyncWriter.Write(".");
     }
 
 	public override void ReportBroadcastTime(TimeSpan value)
