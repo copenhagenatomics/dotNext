@@ -56,7 +56,7 @@ internal sealed class Startup
         if (!string.IsNullOrWhiteSpace(path))
         {
             services.AddSingleton<AppEventSource>();
-            services.UsePersistenceEngine<ISupplier<long>, SimplePersistentState>()
+            services.UsePersistenceEngine<IKValueProvider, SimplePersistentState>()
                 .AddSingleton<IHostedService, DataModifier>();
         }
     }

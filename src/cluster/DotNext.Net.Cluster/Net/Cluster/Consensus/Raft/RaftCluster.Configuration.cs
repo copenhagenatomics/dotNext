@@ -166,7 +166,7 @@ namespace DotNext.Net.Cluster.Consensus.Raft
             /// </summary>
             public TimeSpan RequestTimeout
             {
-                get => requestTimeout ?? TimeSpan.FromMilliseconds(UpperElectionTimeout / 2D);
+                get => requestTimeout ?? TimeSpan.FromMilliseconds(UpperElectionTimeout / 3D);
                 set => requestTimeout = value > TimeSpan.Zero ? value : throw new ArgumentOutOfRangeException(nameof(value));
             }
 
