@@ -153,6 +153,7 @@ static Task UseTcpTransport(int port, string? persistentStorage, bool useSsl, st
         LowerElectionTimeout = myConfig.LowerElectionTimeout,
         UpperElectionTimeout = myConfig.UpperElectionTimeout,
         TransmissionBlockSize = myConfig.TransmissionBlockSize,
+        RequestTimeout = TimeSpan.FromMilliseconds(myConfig.UpperElectionTimeout / 3D),
         ColdStart = false,
         SslOptions = useSsl ? CreateSslOptions() : null
     };
