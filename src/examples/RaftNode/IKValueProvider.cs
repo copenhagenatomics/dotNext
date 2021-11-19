@@ -7,7 +7,7 @@ namespace RaftNode
 {
     internal interface IKValueProvider
     {
-        Dictionary<string, double> Value { get; }
+        byte[] Value { get; }
         
        // Task<bool> UpdateValueAsync(string key, string value, TimeSpan timeout, CancellationToken token);
     }

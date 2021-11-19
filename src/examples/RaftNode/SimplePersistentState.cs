@@ -9,7 +9,10 @@ namespace RaftNode;
 public class MyInterpreter : IDataTransferObject.ITransformation<int>
 {
 
-    public Dictionary<string, double>? newestEntryContent;
+    public byte[]? Data;
+
+
+
 
 /*
 Called by infrastructure. uses MyLogEntry to transform entry to Dictionary object, stored in class.
@@ -30,77 +33,51 @@ return: entry prefix type <int>
         }
         switch (prefix)
         {
-            case MyLogEntry.Prefix:
+            case ByteArrayLogEntry.Prefix:
             //Dict object cannot be returned. store in class.
-                newestEntryContent = await MyLogEntry.TransformAsync(reader, token);
+                Data = await ByteArrayLogEntry.TransformAsync(reader, token);
 
         
             // interpretation logic here
             break;
             default:
-            AsyncWriter.WriteLine($"Unknown command {prefix}");
+            AsyncWriter.WriteLine($"Unknown prefix {prefix}");
             break;
     }
     return prefix;
     }
 
-    public async ValueTask<Dictionary<string, double>> InterpretAsync<TEntry>(TEntry entry)
+    public async ValueTask<byte[]> InterpretAsync<TEntry>(TEntry entry)
     where TEntry : struct, IRaftLogEntry
     {
         var Prefix = await entry.TransformAsync<int, MyInterpreter>(this, CancellationToken.None);
         
-        return newestEntryContent; // is not null ? newestEntryContent : new Dictionary<string, string>(0);
+        return Data is not null ? Data : new byte[0];
 
         
     }
 
-    public int UpdateLocalState(ref Dictionary<string, double> LocalState)
+public int UpdateLocalState(ref byte[] data)
+{
+    data = Data != null ? Data : new byte[0];
+
+    return 1;
+    
+}
+
+    public int PrintState(ref byte[] data)
     {
-        AsyncWriter.WriteLine("updating state with entry");
+        int idx = 0;
+        AsyncWriter.WriteLine($"Data length = {data.Length}");
 
-
-
-        if (newestEntryContent == null)
+        while (idx < data.Length)
         {
-            AsyncWriter.WriteLine("No content in entry");
-        }
-        else 
-        {
-            
-            foreach (var item in newestEntryContent)
+            for (int i = 0; i<16; i++)
             {
-                if(!LocalState.ContainsKey(item.Key)){ 
-                    AsyncWriter.WriteLine($"Adding key [{item.Key}] = '{item.Value}' to state");
-                    LocalState.Add(item.Key, item.Value);
-                }
-                else
-                {
-                    // handle duplicate key issue here
-                    AsyncWriter.WriteLine($"updating key [{item.Key}] from '{LocalState[item.Key]}' to '{item.Value}'");
-                    LocalState[item.Key] = item.Value;
-                
-                }  
-            } 
-        }
-        return 0;
-    }
-
-    public int PrintState(ref Dictionary<string, double> state)
-    {
-        
-        
-        if (state is not null)
-        {
-            foreach (var (key, value) in state)
-            {
-                AsyncWriter.WriteLine($"\t[{key}] = {value}");
+                AsyncWriter.Write($"{data[idx]}\t");
             }
+            AsyncWriter.WriteLine("");
         }
-        else
-        {
-            AsyncWriter.WriteLine("\tIt's null");
-        }
-
 
         return 1;
     }
@@ -112,13 +89,13 @@ internal sealed class SimplePersistentState : PersistentState, IKValueProvider//
 
     private sealed class SimpleSnapshotBuilder : IncrementalSnapshotBuilder
     {
-        private Dictionary<string, double> content;
+        private byte[] content;
 
         public SimpleSnapshotBuilder(in SnapshotBuilderContext context, MyInterpreter interpreter)
             : base(context)
         {
                 Interpreter = interpreter;
-                content = new Dictionary<string, double>();
+                content = new byte[0];
         }
 
         private MyInterpreter Interpreter;
@@ -135,7 +112,7 @@ internal sealed class SimplePersistentState : PersistentState, IKValueProvider//
                 else
                 {
                     await Interpreter.InterpretAsync(entry);
-                    Interpreter.UpdateLocalState(ref content);
+                    //Interpreter.UpdateLocalState(ref content);
                 }
             }
             else
@@ -147,25 +124,25 @@ internal sealed class SimplePersistentState : PersistentState, IKValueProvider//
 
         public override ValueTask WriteToAsync<TWriter>(TWriter writer, CancellationToken token)
         {
-            var entry = new MyLogEntry(content, 0);
+            var entry = new ByteArrayLogEntry(content, 0);
             return entry.WriteToAsync(writer, token);
         }
             //=> writer.WriteAsync(value, token);
     }
 
     
-    private volatile Dictionary<string, double> content;
+    private volatile byte[] content;
 
     public SimplePersistentState(string path, AppEventSource source)
         : base(path, 50, CreateOptions(source))
     {
-        content = new Dictionary<string, double>();
+        content = new byte[0];
     }
 
     public SimplePersistentState(IConfiguration configuration, AppEventSource source)
         : this(configuration[LogLocation], source)
     {
-        content = new Dictionary<string, double>();
+        content = new byte[0];
     }
 
     private static Options CreateOptions(AppEventSource source)
@@ -199,7 +176,7 @@ internal sealed class SimplePersistentState : PersistentState, IKValueProvider//
         return result;
     }
 
-    Dictionary<string, double> IKValueProvider.Value => content;
+    byte[] IKValueProvider.Value => content;
    // long ISupplier<long>.Invoke() => content.VolatileRead();
 
 /*
