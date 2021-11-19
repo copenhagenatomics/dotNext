@@ -41,7 +41,7 @@ sealed class MyMetricsCollector : MetricsCollector
 
 	public override void ReportBroadcastTime(TimeSpan value)
     {
-        AsyncWriter.WriteLine(value.Milliseconds.ToString());
+        //AsyncWriter.WriteLine(value.Milliseconds.ToString());
         /*
         broadCastTimes[index] = value.TotalMilliseconds;
         index++;
