@@ -38,7 +38,7 @@ public readonly struct ByteArrayLogEntry :  IRaftLogEntry
 
       long result = 4 + payload.Length + 4;
 
-      Console.WriteLine($"Get length of payload: {result}");
+      AsyncWriter.WriteLine($"Get length of payload: {result}");
       return result;
     }
   }
