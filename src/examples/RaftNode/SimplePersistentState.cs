@@ -83,7 +83,7 @@ public int UpdateLocalState(ref byte[] data)
     }
 }
 
-internal sealed class SimplePersistentState : PersistentState, IKValueProvider//, ISupplier<long>
+internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValueProvider//, ISupplier<long>
 {
     internal const string LogLocation = "logLocation";
 
@@ -214,7 +214,7 @@ internal sealed class SimplePersistentState : PersistentState, IKValueProvider//
             new ValueTask();
         }
     }
-    protected override SnapshotBuilder CreateSnapshotBuilder(in SnapshotBuilderContext context)
+    protected override SnapshotBuilder CreateSnapshotBuilder(in MemoryBasedStateMachine.SnapshotBuilderContext context)
     {
         AsyncWriter.WriteLine("Building snapshot");
         return new SimpleSnapshotBuilder(context, new MyInterpreter());
