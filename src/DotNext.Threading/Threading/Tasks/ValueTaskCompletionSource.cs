@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks.Sources;
@@ -29,6 +30,55 @@ public class ValueTaskCompletionSource : ManualResetCompletionSource, IValueTask
 
         public static implicit operator OperationCanceledExceptionFactory(CancellationToken token)
             => new(token);
+    }
+
+    private sealed class LinkedTaskCompletionSource : TaskCompletionSource
+    {
+        private static readonly Action<object?> CompletionCallback = OnCompleted;
+
+        private static void OnCompleted(object? state)
+        {
+            Debug.Assert(state is LinkedTaskCompletionSource);
+
+            Unsafe.As<LinkedTaskCompletionSource>(state).OnCompleted();
+        }
+
+        private IValueTaskSource? source;
+        private short version;
+
+        internal LinkedTaskCompletionSource(object? state)
+            : base(state, TaskCreationOptions.None)
+        {
+        }
+
+        internal void LinkTo(IValueTaskSource source, short version)
+        {
+            this.source = source;
+            this.version = version;
+            source.OnCompleted(CompletionCallback, this, version, ValueTaskSourceOnCompletedFlags.None);
+        }
+
+        private void OnCompleted()
+        {
+            if (source is not null)
+            {
+                try
+                {
+                    source.GetResult(version);
+                    TrySetResult();
+                }
+                catch (OperationCanceledException e)
+                {
+                    TrySetCanceled(e.CancellationToken);
+                }
+                catch (Exception e)
+                {
+                    TrySetException(e);
+                }
+            }
+
+            source = null;
+        }
     }
 
     private static readonly NullExceptionConstant NullSupplier = new();
@@ -248,4 +298,20 @@ public class ValueTaskCompletionSource : ManualResetCompletionSource, IValueTask
     /// <inheritdoc />
     void IValueTaskSource.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags)
         => OnCompleted(continuation, state, token, flags);
+
+    /// <summary>
+    /// Creates a linked <see cref="TaskCompletionSource"/> that can be used cooperatively to
+    /// complete the task.
+    /// </summary>
+    /// <param name="userData">The custom data to be associated with the current version of the task.</param>
+    /// <param name="timeout">The timeout associated with the task.</param>
+    /// <param name="token">The cancellation token that can be used to cancel the task.</param>
+    /// <returns>A linked <see cref="TaskCompletionSource"/>.</returns>
+    public TaskCompletionSource CreateLinkedTaskCompletionSource(object? userData, TimeSpan timeout, CancellationToken token)
+    {
+        var source = new LinkedTaskCompletionSource(userData);
+        PrepareTask(timeout, token);
+        source.LinkTo(this, version);
+        return source;
+    }
 }

@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DotNext.Threading
 {
@@ -102,6 +103,26 @@ namespace DotNext.Threading
             l.Dispose();
             var result = l.TryAcquireAsync(System.Threading.Timeout.InfiniteTimeSpan);
             await ThrowsAsync<ObjectDisposedException>(result.AsTask);
+        }
+
+        [Fact]
+        public static async Task CaptureCallerInfo()
+        {
+            using var l = new AsyncExclusiveLock();
+            Empty(l.GetSuspendedCallers());
+
+            l.TrackSuspendedCallers();
+            await l.AcquireAsync();
+            Empty(l.GetSuspendedCallers());
+
+            using var activity = new Activity("MyOperation").Start();
+            var suspendedTask = l.AcquireAsync();
+            False(suspendedTask.IsCompleted);
+            NotEmpty(l.GetSuspendedCallers());
+            Equal("MyOperation", l.GetSuspendedCallers()[0] is Activity a ? a.OperationName : string.Empty);
+
+            l.Release();
+            await suspendedTask;
         }
     }
 }
