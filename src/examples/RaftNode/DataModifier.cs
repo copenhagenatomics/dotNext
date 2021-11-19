@@ -55,7 +55,10 @@ internal sealed class DataModifier : BackgroundService
                     //var entry = new Int64LogEntry { Content = newValue, Term = cluster.Term };
                     stopWatch.Restart();
                     var result = true;
-                    int i;
+                    //int i;
+
+                    result = await cluster.ReplicateMultipleAsync(entry, nReplicas, stoppingToken);
+                    /*
                     for (i = 0; i<nReplicas; i++)
                     {
                         result = await cluster.ReplicateAsync(entry, stoppingToken);
@@ -64,12 +67,12 @@ internal sealed class DataModifier : BackgroundService
                             break;
                         }
                     }
-                    
+                    */
                     
                     stopWatch.Stop();
                     txSum+=stopWatch.ElapsedMilliseconds;
 
-                    AsyncWriter.WriteLine($"Replicated {payloadSize} bytes {i} times in {stopWatch.ElapsedMilliseconds} ms. average over {cycleNumber}: {txSum/cycleNumber} ms result: {result}");
+                    AsyncWriter.WriteLine($"Replicated {payloadSize} bytes {nReplicas} times in {stopWatch.ElapsedMilliseconds} ms. average over {cycleNumber}: {txSum/cycleNumber} ms result: {result}");
 
                 }
                 catch (Exception e)

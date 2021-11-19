@@ -53,4 +53,7 @@ public interface IReplicationCluster<TEntry> : IReplicationCluster
     /// <exception cref="OperationCanceledException">The operation has been canceled.</exception>
     Task<bool> ReplicateAsync<TEntryImpl>(TEntryImpl entry, CancellationToken token = default)
         where TEntryImpl : notnull, TEntry;
+
+    Task<bool> ReplicateMultipleAsync<TEntryImpl>(TEntryImpl entry, int N, CancellationToken token)
+        where TEntryImpl : notnull, TEntry;
 }

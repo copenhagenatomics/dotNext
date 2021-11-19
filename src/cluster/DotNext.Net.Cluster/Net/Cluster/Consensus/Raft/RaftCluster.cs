@@ -791,6 +791,28 @@ public abstract partial class RaftCluster<TMember> : Disposable, IRaftCluster, I
         return auditTrail.Term == entry.Term;
     }
 
+    public async Task<bool> ReplicateMultipleAsync<TEntry>(TEntry entry, int N, CancellationToken token)
+        where TEntry : notnull, IRaftLogEntry
+    {
+        ThrowIfDisposed();
+
+        using var tokenSource = token.LinkTo(LifecycleToken);
+
+        // 1 - append entry to the log
+        long index = 0;
+        for (int i = 0; i < N; i++)
+        {
+            index = await auditTrail.AppendAsync(entry, token).ConfigureAwait(false);
+        }
+        // 2 - force replication
+        await ForceReplicationAsync(token).ConfigureAwait(false);
+
+        // 3 - wait for commit
+        await auditTrail.WaitForCommitAsync(index, token).ConfigureAwait(false);
+
+        return auditTrail.Term == entry.Term;
+    }
+
     private TMember? TryGetPeer(EndPoint peer)
     {
         foreach (var member in members.Values)
