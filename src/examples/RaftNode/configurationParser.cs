@@ -14,6 +14,7 @@ public class TestConfiguration
     public int TransmissionBlockSize { get; set; }
     public bool IsLocal { get; set; }
     public int NodeCount  { get; set; }
+    public bool sensorData { get; set; }
 
     public Dictionary<string, Node_t> NodeList { get; set; }
     public class Node_t

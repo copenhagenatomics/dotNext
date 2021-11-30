@@ -80,15 +80,40 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
 
     using var cluster = new RaftCluster(config);
     cluster.LeaderChanged += ClusterConfigurator.LeaderChanged;
-    var modifier = default(DataModifier?);
-    if (!string.IsNullOrEmpty(persistentStorage))
+
+    var modifier = default(BackgroundService?);
+    var sensorSim = default(SensorSimulator?);
+    var replicator = default(SensorDataReplicator?);
+    var dataReciever = default(clientDataReceiver?);
+
+    var state = new SimplePersistentState(persistentStorage, new AppEventSource());
+    cluster.AuditTrail = state;
+    if (testCfg.sensorData)
     {
-        var state = new SimplePersistentState(persistentStorage, new AppEventSource());
-        cluster.AuditTrail = state;
+        replicator = new SensorDataReplicator(cluster, 10);
+        sensorSim = new SensorSimulator(replicator, 1000);
+        
+        dataReciever = new clientDataReceiver(cluster, config.HostEndPoint.Port+100);
+    }
+    else
+    {
         modifier = new DataModifier(cluster, state);
     }
     await cluster.StartAsync(CancellationToken.None);
-    await (modifier?.StartAsync(CancellationToken.None) ?? Task.CompletedTask);
+
+    if (testCfg.sensorData)
+    {
+        AsyncWriter.WriteLine("Starting message handling threads");
+        replicator.RunThread(CancellationToken.None);
+        sensorSim.RunThread(CancellationToken.None);
+        dataReciever.RunThread(CancellationToken.None);
+        AsyncWriter.WriteLine("done");
+    }
+    else
+    {
+        await (modifier?.StartAsync(CancellationToken.None) ?? Task.CompletedTask);
+    }
+
     using var handler = new CancelKeyPressHandler();
     Console.CancelKeyPress += handler.Handler;
     await handler.WaitAsync();
