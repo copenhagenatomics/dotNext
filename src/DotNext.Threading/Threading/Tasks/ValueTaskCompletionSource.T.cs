@@ -81,8 +81,6 @@ public class ValueTaskCompletionSource<T> : ManualResetCompletionSource, IValueT
     {
     }
 
-    private bool IsDerived => GetType() != typeof(ValueTaskCompletionSource<T>);
-
     private static Result<T> FromCanceled(CancellationToken token)
         => new(new OperationCanceledException(token));
 
@@ -101,7 +99,7 @@ public class ValueTaskCompletionSource<T> : ManualResetCompletionSource, IValueT
     /// <param name="value">The value to be returned to the consumer.</param>
     /// <returns><see langword="true"/> if the result is completed successfully; <see langword="false"/> if the task has been canceled or timed out.</returns>
     public unsafe bool TrySetResult(short completionToken, T value)
-        => TrySetResult(completionToken, &Result.FromValue, value);
+        => TrySetResult(&Result.FromValue, value, completionToken);
 
     /// <summary>
     /// Attempts to complete the task unsuccessfully.
@@ -118,7 +116,7 @@ public class ValueTaskCompletionSource<T> : ManualResetCompletionSource, IValueT
     /// <param name="e">The exception to be returned to the consumer.</param>
     /// <returns><see langword="true"/> if the result is completed successfully; <see langword="false"/> if the task has been canceled or timed out.</returns>
     public unsafe bool TrySetException(short completionToken, Exception e)
-        => TrySetResult(completionToken, &Result.FromException<T>, e);
+        => TrySetResult(&Result.FromException<T>, e, completionToken);
 
     /// <summary>
     /// Attempts to complete the task unsuccessfully.
@@ -135,7 +133,7 @@ public class ValueTaskCompletionSource<T> : ManualResetCompletionSource, IValueT
     /// <param name="token">The canceled token.</param>
     /// <returns><see langword="true"/> if the result is completed successfully; <see langword="false"/> if the task has been canceled or timed out.</returns>
     public unsafe bool TrySetCanceled(short completionToken, CancellationToken token)
-        => TrySetResult(completionToken, &FromCanceled, token);
+        => TrySetResult(&FromCanceled, token, completionToken);
 
     private protected sealed override void CompleteAsTimedOut()
         => SetResult(OnTimeout());
@@ -143,56 +141,17 @@ public class ValueTaskCompletionSource<T> : ManualResetCompletionSource, IValueT
     private protected sealed override void CompleteAsCanceled(CancellationToken token)
         => SetResult(OnCanceled(token));
 
-    private unsafe bool TrySetResult<TArg>(delegate*<TArg, Result<T>> func, TArg arg)
+    private unsafe bool TrySetResult<TArg>(delegate*<TArg, Result<T>> func, TArg arg, short? completionToken = null)
     {
         Debug.Assert(func != null);
 
         bool result;
-        if (IsCompleted)
-        {
-            result = false;
-        }
-        else
+        if (result = CanBeCompleted)
         {
             lock (SyncRoot)
             {
-                if (IsCompleted)
-                {
-                    result = false;
-                }
-                else
-                {
+                if (result = CanBeCompleted && completionToken.GetValueOrDefault(version) == version)
                     SetResult(func(arg));
-                    result = true;
-                }
-            }
-        }
-
-        return result;
-    }
-
-    private unsafe bool TrySetResult<TArg>(short completionToken, delegate*<TArg, Result<T>> func, TArg arg)
-    {
-        Debug.Assert(func != null);
-
-        bool result;
-        if (IsCompleted)
-        {
-            result = false;
-        }
-        else
-        {
-            lock (SyncRoot)
-            {
-                if (IsCompleted || completionToken != version)
-                {
-                    result = false;
-                }
-                else
-                {
-                    SetResult(func(arg));
-                    result = true;
-                }
             }
         }
 
@@ -205,7 +164,7 @@ public class ValueTaskCompletionSource<T> : ManualResetCompletionSource, IValueT
 
         StopTrackingCancellation();
         this.result = result;
-        IsCompleted = true;
+        OnCompleted();
         InvokeContinuation();
     }
 
@@ -268,17 +227,18 @@ public class ValueTaskCompletionSource<T> : ManualResetCompletionSource, IValueT
 
     private T GetResult(short token)
     {
-        if (!IsCompleted || token != version)
-            throw new InvalidOperationException();
+        if (Status != ManualResetCompletionSourceStatus.WaitForConsumption)
+            throw new InvalidOperationException(ExceptionMessages.InvalidSourceState);
+
+        if (token != version)
+            throw new InvalidOperationException(ExceptionMessages.InvalidSourceToken);
 
         // ensure that instance field access before returning to the pool to avoid
         // concurrency with Reset()
         var resultCopy = result;
         Thread.MemoryBarrier();
 
-        if (IsDerived)
-            QueueAfterConsumed();
-
+        OnConsumed<ValueTaskCompletionSource<T>>();
         return resultCopy.Value;
     }
 
@@ -291,16 +251,14 @@ public class ValueTaskCompletionSource<T> : ManualResetCompletionSource, IValueT
     private ValueTaskSourceStatus GetStatus(short token)
     {
         if (token != version)
-            throw new InvalidOperationException();
+            throw new InvalidOperationException(ExceptionMessages.InvalidSourceToken);
 
-        if (!IsCompleted)
-            return ValueTaskSourceStatus.Pending;
-
-        var error = result.Error;
-        if (error is null)
-            return ValueTaskSourceStatus.Succeeded;
-
-        return error is OperationCanceledException ? ValueTaskSourceStatus.Canceled : ValueTaskSourceStatus.Faulted;
+        return !IsCompleted ? ValueTaskSourceStatus.Pending : result.Error switch
+        {
+            null => ValueTaskSourceStatus.Succeeded,
+            OperationCanceledException => ValueTaskSourceStatus.Canceled,
+            _ => ValueTaskSourceStatus.Faulted,
+        };
     }
 
     /// <inheritdoc />

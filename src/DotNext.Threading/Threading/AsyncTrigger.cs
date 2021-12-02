@@ -30,7 +30,7 @@ public class AsyncTrigger : QueuedSynchronizer, IAsyncEvent
         }
     }
 
-    private readonly ValueTaskPool<DefaultWaitNode> pool;
+    private ValueTaskPool<bool, DefaultWaitNode> pool;
     private LockManager manager;
 
     /// <summary>
@@ -38,7 +38,7 @@ public class AsyncTrigger : QueuedSynchronizer, IAsyncEvent
     /// </summary>
     public AsyncTrigger()
     {
-        pool = new(RemoveAndDrainWaitQueue);
+        pool = new(OnCompleted);
     }
 
     /// <summary>
@@ -51,15 +51,23 @@ public class AsyncTrigger : QueuedSynchronizer, IAsyncEvent
         if (concurrencyLevel < 1)
             throw new ArgumentOutOfRangeException(nameof(concurrencyLevel));
 
-        pool = new(concurrencyLevel, RemoveAndDrainWaitQueue);
+        pool = new(OnCompleted, concurrencyLevel);
+    }
+
+    [MethodImpl(MethodImplOptions.Synchronized)]
+    private void OnCompleted(DefaultWaitNode node)
+    {
+        RemoveAndDrainWaitQueue(node);
+        pool.Return(node);
     }
 
     /// <inheritdoc/>
     bool IAsyncEvent.Reset() => false;
 
-    [MethodImpl(MethodImplOptions.Synchronized)]
     private bool SignalCore()
     {
+        Debug.Assert(Monitor.IsEntered(this));
+
         for (LinkedValueTaskCompletionSource? current = first, next; current is not null; current = next)
         {
             next = current.Next;
@@ -89,10 +97,11 @@ public class AsyncTrigger : QueuedSynchronizer, IAsyncEvent
     /// </param>
     /// <returns><see langword="true"/> if at least one suspended caller has been resumed; otherwise, <see langword="false"/>.</returns>
     /// <exception cref="ObjectDisposedException">This trigger has been disposed.</exception>
+    [MethodImpl(MethodImplOptions.Synchronized)]
     public bool Signal(bool resumeAll = false)
     {
         ThrowIfDisposed();
-        return resumeAll ? ResumeSuspendedCallers(DetachWaitQueue()) > 0L : SignalCore();
+        return resumeAll ? ResumeSuspendedCallers() > 0L : SignalCore();
     }
 
     /// <inheritdoc/>
@@ -120,7 +129,7 @@ public class AsyncTrigger : QueuedSynchronizer, IAsyncEvent
     /// <seealso cref="Signal"/>
     [MethodImpl(MethodImplOptions.Synchronized)]
     public ValueTask<bool> WaitAsync(TimeSpan timeout, CancellationToken token = default)
-        => WaitNoTimeoutAsync(ref manager, pool, timeout, token);
+        => WaitNoTimeoutAsync(ref manager, ref pool, timeout, token);
 
     /// <summary>
     /// Suspends the caller and waits for the signal.
@@ -135,7 +144,7 @@ public class AsyncTrigger : QueuedSynchronizer, IAsyncEvent
     /// <seealso cref="Signal"/>
     [MethodImpl(MethodImplOptions.Synchronized)]
     public ValueTask WaitAsync(CancellationToken token = default)
-        => WaitWithTimeoutAsync(ref manager, pool, InfiniteTimeSpan, token);
+        => WaitWithTimeoutAsync(ref manager, ref pool, InfiniteTimeSpan, token);
 
     /// <summary>
     /// Resumes the first suspended caller in the queue and suspends the immediate caller.
@@ -221,24 +230,15 @@ public class AsyncTrigger<TState> : QueuedSynchronizer
         private Action<WaitNode>? consumedCallback;
         internal ITransition? Transition;
 
-        protected override void AfterConsumed()
-        {
-            ReportLockDuration();
-            consumedCallback?.Invoke(this);
-            CallerInfo = null;
-        }
+        protected override void AfterConsumed() => AfterConsumed(this);
 
         private protected override void ResetCore()
         {
             Transition = null;
-            consumedCallback = null;
             base.ResetCore();
         }
 
-        Action<WaitNode>? IPooledManualResetCompletionSource<WaitNode>.OnConsumed
-        {
-            set => consumedCallback = value;
-        }
+        ref Action<WaitNode>? IPooledManualResetCompletionSource<WaitNode>.OnConsumed => ref consumedCallback;
     }
 
     [StructLayout(LayoutKind.Auto)]
@@ -261,7 +261,7 @@ public class AsyncTrigger<TState> : QueuedSynchronizer
             => node.Transition = transition;
     }
 
-    private readonly ValueTaskPool<WaitNode> pool;
+    private ValueTaskPool<bool, WaitNode> pool;
 
     /// <summary>
     /// Initializes a new trigger.
@@ -270,7 +270,7 @@ public class AsyncTrigger<TState> : QueuedSynchronizer
     public AsyncTrigger(TState state)
     {
         State = state ?? throw new ArgumentNullException(nameof(state));
-        pool = new(RemoveAndDrainWaitQueue);
+        pool = new(OnCompleted);
     }
 
     /// <summary>
@@ -285,7 +285,14 @@ public class AsyncTrigger<TState> : QueuedSynchronizer
             throw new ArgumentOutOfRangeException(nameof(concurrencyLevel));
 
         State = state ?? throw new ArgumentNullException(nameof(state));
-        pool = new(concurrencyLevel, RemoveAndDrainWaitQueue);
+        pool = new(OnCompleted, concurrencyLevel);
+    }
+
+    [MethodImpl(MethodImplOptions.Synchronized)]
+    private void OnCompleted(WaitNode node)
+    {
+        RemoveAndDrainWaitQueue(node);
+        pool.Return(node);
     }
 
     /// <summary>
@@ -391,7 +398,7 @@ public class AsyncTrigger<TState> : QueuedSynchronizer
     {
         ArgumentNullException.ThrowIfNull(transition);
         var manager = new LockManager(State, transition);
-        return WaitNoTimeoutAsync(ref manager, pool, timeout, token);
+        return WaitNoTimeoutAsync(ref manager, ref pool, timeout, token);
     }
 
     /// <summary>
@@ -409,7 +416,7 @@ public class AsyncTrigger<TState> : QueuedSynchronizer
     {
         ArgumentNullException.ThrowIfNull(transition);
         var manager = new LockManager(State, transition);
-        return WaitWithTimeoutAsync(ref manager, pool, InfiniteTimeSpan, token);
+        return WaitWithTimeoutAsync(ref manager, ref pool, InfiniteTimeSpan, token);
     }
 
     private protected sealed override bool IsReadyToDispose => first is null;

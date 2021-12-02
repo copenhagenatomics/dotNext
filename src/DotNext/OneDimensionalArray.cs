@@ -29,8 +29,9 @@ public static class OneDimensionalArray
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="startIndex"/> is less than 0 or greater than length of <paramref name="left"/> array.</exception>
     public static T[] Concat<T>(this T[] left, T[] right, long startIndex)
     {
-        if (startIndex < 0 || startIndex > Intrinsics.GetLength(left))
+        if ((ulong)startIndex > (ulong)left.LongLength)
             throw new ArgumentOutOfRangeException(nameof(startIndex));
+
         var result = new T[startIndex + right.LongLength];
         Array.Copy(left, result, startIndex);
         Array.Copy(right, 0L, result, startIndex, right.Length);
@@ -94,7 +95,8 @@ public static class OneDimensionalArray
     /// <returns>A modified array with inserted element.</returns>
     public static T[] Insert<T>(this T[] array, T element, long index)
     {
-        if (index < 0 || index > array.LongLength)
+        var length = array.LongLength;
+        if ((ulong)index > (ulong)length)
             throw new ArgumentOutOfRangeException(nameof(index));
 
         T[] result;
@@ -104,14 +106,25 @@ public static class OneDimensionalArray
         }
         else
         {
-            result = new T[array.LongLength + 1];
-            Array.Copy(array, 0, result, 0, Math.Min(index + 1, array.LongLength));
-            Array.Copy(array, index, result, index + 1, array.LongLength - index);
+            result = new T[length + 1];
+            Array.Copy(array, 0, result, 0, Math.Min(index + 1, length));
+            Array.Copy(array, index, result, index + 1, length - index);
             result[index] = element;
         }
 
         return result;
     }
+
+    /// <summary>
+    /// Insert a new element into array and return modified array.
+    /// </summary>
+    /// <typeparam name="T">Type of array elements.</typeparam>
+    /// <param name="array">Source array. Cannot be <see langword="null"/>.</param>
+    /// <param name="element">The object to insert.</param>
+    /// <param name="index">The zero-based index at which item should be inserted.</param>
+    /// <returns>A modified array with inserted element.</returns>
+    public static T[] Insert<T>(this T[] array, T element, Index index)
+        => Insert(array, element, (long)index.GetOffset(array.Length));
 
     /// <summary>
     /// Removes the element at the specified in the array and returns modified array.
@@ -124,7 +137,7 @@ public static class OneDimensionalArray
     public static T[] RemoveAt<T>(this T[] array, long index)
     {
         var length = Intrinsics.GetLength(array);
-        if (index < 0L || index >= length)
+        if ((ulong)index >= (ulong)length)
             throw new ArgumentOutOfRangeException(nameof(index));
 
         if (length == 1)
@@ -136,6 +149,17 @@ public static class OneDimensionalArray
         return newStore;
     }
 
+    /// <summary>
+    /// Removes the element at the specified in the array and returns modified array.
+    /// </summary>
+    /// <param name="array">Source array. Cannot be <see langword="null"/>.</param>
+    /// <param name="index">The zero-based index of the element to remove.</param>
+    /// <typeparam name="T">Type of array elements.</typeparam>
+    /// <returns>A modified array with removed element.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is incorrect.</exception>
+    public static T[] RemoveAt<T>(this T[] array, Index index)
+        => RemoveAt(array, (long)index.GetOffset(array.Length));
+
     private static T[] RemoveAll<T, TPredicate, TConsumer>(T[] array, TPredicate condition, ref TConsumer callback)
         where TPredicate : struct, ISupplier<T, bool>
         where TConsumer : struct, IConsumer<T>
@@ -143,6 +167,7 @@ public static class OneDimensionalArray
         var length = Intrinsics.GetLength(array);
         if (length == 0)
             return array;
+
         nint newLength = 0;
         var tempArray = new T[length];
         foreach (var item in array)
@@ -224,8 +249,6 @@ public static class OneDimensionalArray
         var action = new DelegatingConsumer<T>(callback);
         return RemoveAll(array, new Supplier<T, bool>(match), ref action);
     }
-
-    internal static T[] New<T>(long length) => length == 0L ? Array.Empty<T>() : new T[length];
 
     /// <summary>
     /// Removes the specified number of elements from the beginning of the array.
