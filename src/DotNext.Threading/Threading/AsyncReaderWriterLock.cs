@@ -28,23 +28,9 @@ public class AsyncReaderWriterLock : QueuedSynchronizer, IAsyncDisposable
         private Action<WaitNode>? consumedCallback;
         internal LockType Type;
 
-        protected override void AfterConsumed()
-        {
-            ReportLockDuration();
-            consumedCallback?.Invoke(this);
-            CallerInfo = null;
-        }
+        protected override void AfterConsumed() => AfterConsumed(this);
 
-        private protected override void ResetCore()
-        {
-            consumedCallback = null;
-            base.ResetCore();
-        }
-
-        Action<WaitNode>? IPooledManualResetCompletionSource<WaitNode>.OnConsumed
-        {
-            set => consumedCallback = value;
-        }
+        ref Action<WaitNode>? IPooledManualResetCompletionSource<WaitNode>.OnConsumed => ref consumedCallback;
 
         internal bool IsReadLock => Type != LockType.Exclusive;
 
@@ -222,8 +208,8 @@ public class AsyncReaderWriterLock : QueuedSynchronizer, IAsyncDisposable
             => !first.Equals(in second);
     }
 
-    private readonly ValueTaskPool<WaitNode> pool;
     private readonly State state;
+    private ValueTaskPool<bool, WaitNode> pool;
 
     /// <summary>
     /// Initializes a new reader/writer lock.
@@ -236,7 +222,7 @@ public class AsyncReaderWriterLock : QueuedSynchronizer, IAsyncDisposable
             throw new ArgumentOutOfRangeException(nameof(concurrencyLevel));
 
         state = new(long.MinValue);
-        pool = new ValueTaskPool<WaitNode>(concurrencyLevel, RemoveAndDrainWaitQueue);
+        pool = new(OnCompleted, concurrencyLevel);
     }
 
     /// <summary>
@@ -245,7 +231,14 @@ public class AsyncReaderWriterLock : QueuedSynchronizer, IAsyncDisposable
     public AsyncReaderWriterLock()
     {
         state = new(long.MinValue);
-        pool = new(RemoveAndDrainWaitQueue);
+        pool = new(OnCompleted);
+    }
+
+    [MethodImpl(MethodImplOptions.Synchronized)]
+    private void OnCompleted(WaitNode node)
+    {
+        RemoveAndDrainWaitQueue(node);
+        pool.Return(node);
     }
 
     /// <summary>
@@ -309,7 +302,7 @@ public class AsyncReaderWriterLock : QueuedSynchronizer, IAsyncDisposable
     public ValueTask<bool> TryEnterReadLockAsync(TimeSpan timeout, CancellationToken token = default)
     {
         var manager = new ReadLockManager(state);
-        return WaitNoTimeoutAsync(ref manager, pool, timeout, token);
+        return WaitNoTimeoutAsync(ref manager, ref pool, timeout, token);
     }
 
     /// <summary>
@@ -326,7 +319,7 @@ public class AsyncReaderWriterLock : QueuedSynchronizer, IAsyncDisposable
     public ValueTask EnterReadLockAsync(TimeSpan timeout, CancellationToken token = default)
     {
         var manager = new ReadLockManager(state);
-        return WaitWithTimeoutAsync(ref manager, pool, timeout, token);
+        return WaitWithTimeoutAsync(ref manager, ref pool, timeout, token);
     }
 
     /// <summary>
@@ -386,7 +379,7 @@ public class AsyncReaderWriterLock : QueuedSynchronizer, IAsyncDisposable
     public ValueTask<bool> TryEnterWriteLockAsync(TimeSpan timeout, CancellationToken token = default)
     {
         var manager = new WriteLockManager(state);
-        return WaitNoTimeoutAsync(ref manager, pool, timeout, token);
+        return WaitNoTimeoutAsync(ref manager, ref pool, timeout, token);
     }
 
     /// <summary>
@@ -414,7 +407,7 @@ public class AsyncReaderWriterLock : QueuedSynchronizer, IAsyncDisposable
     public ValueTask EnterWriteLockAsync(TimeSpan timeout, CancellationToken token = default)
     {
         var manager = new WriteLockManager(state);
-        return WaitWithTimeoutAsync(ref manager, pool, timeout, token);
+        return WaitWithTimeoutAsync(ref manager, ref pool, timeout, token);
     }
 
     /// <summary>
@@ -444,7 +437,7 @@ public class AsyncReaderWriterLock : QueuedSynchronizer, IAsyncDisposable
     public ValueTask<bool> TryUpgradeToWriteLockAsync(TimeSpan timeout, CancellationToken token = default)
     {
         var manager = new UpgradeManager(state);
-        return WaitNoTimeoutAsync(ref manager, pool, timeout, token);
+        return WaitNoTimeoutAsync(ref manager, ref pool, timeout, token);
     }
 
     /// <summary>
@@ -472,7 +465,7 @@ public class AsyncReaderWriterLock : QueuedSynchronizer, IAsyncDisposable
     public ValueTask UpgradeToWriteLockAsync(TimeSpan timeout, CancellationToken token = default)
     {
         var manager = new UpgradeManager(state);
-        return WaitWithTimeoutAsync(ref manager, pool, timeout, token);
+        return WaitWithTimeoutAsync(ref manager, ref pool, timeout, token);
     }
 
     private protected sealed override void DrainWaitQueue()

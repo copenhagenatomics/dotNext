@@ -95,15 +95,13 @@ public class ValueTaskCompletionSource : ManualResetCompletionSource, IValueTask
     {
     }
 
-    private bool IsDerived => GetType() != typeof(ValueTaskCompletionSource);
-
     private void SetResult(Exception? result)
     {
         Debug.Assert(Monitor.IsEntered(SyncRoot));
 
         StopTrackingCancellation();
         this.result = result is null ? null : ExceptionDispatchInfo.Capture(result);
-        IsCompleted = true;
+        OnCompleted();
         InvokeContinuation();
     }
 
@@ -140,54 +138,16 @@ public class ValueTaskCompletionSource : ManualResetCompletionSource, IValueTask
     /// <returns>The exception representing task result; or <see langword="null"/> to complete successfully.</returns>
     protected virtual Exception? OnCanceled(CancellationToken token) => new OperationCanceledException(token);
 
-    private bool TrySetResult<TFactory>(TFactory factory)
+    private bool TrySetResult<TFactory>(TFactory factory, short? completionToken = null)
         where TFactory : notnull, ISupplier<Exception?>
     {
         bool result;
-        if (IsCompleted)
-        {
-            result = false;
-        }
-        else
+        if (result = CanBeCompleted)
         {
             lock (SyncRoot)
             {
-                if (IsCompleted)
-                {
-                    result = false;
-                }
-                else
-                {
+                if (result = CanBeCompleted && completionToken.GetValueOrDefault(version) == version)
                     SetResult(factory.Invoke());
-                    result = true;
-                }
-            }
-        }
-
-        return result;
-    }
-
-    private bool TrySetResult<TFactory>(short completionToken, TFactory factory)
-        where TFactory : notnull, ISupplier<Exception?>
-    {
-        bool result;
-        if (IsCompleted)
-        {
-            result = false;
-        }
-        else
-        {
-            lock (SyncRoot)
-            {
-                if (IsCompleted || completionToken != version)
-                {
-                    result = false;
-                }
-                else
-                {
-                    SetResult(factory.Invoke());
-                    result = true;
-                }
             }
         }
 
@@ -209,7 +169,7 @@ public class ValueTaskCompletionSource : ManualResetCompletionSource, IValueTask
     /// <param name="token">The canceled token.</param>
     /// <returns><see langword="true"/> if the result is completed successfully; <see langword="false"/> if the task has been canceled or timed out.</returns>
     public bool TrySetCanceled(short completionToken, CancellationToken token)
-        => TrySetResult<OperationCanceledExceptionFactory>(completionToken, token);
+        => TrySetResult<OperationCanceledExceptionFactory>(token, completionToken);
 
     /// <summary>
     /// Attempts to complete the task unsuccessfully.
@@ -226,7 +186,7 @@ public class ValueTaskCompletionSource : ManualResetCompletionSource, IValueTask
     /// <param name="e">The exception to be returned to the consumer.</param>
     /// <returns><see langword="true"/> if the result is completed successfully; <see langword="false"/> if the task has been canceled or timed out.</returns>
     public bool TrySetException(short completionToken, Exception e)
-        => TrySetResult<ValueSupplier<Exception>>(completionToken, e);
+        => TrySetResult<ValueSupplier<Exception>>(e, completionToken);
 
     /// <summary>
     /// Attempts to complete the task sucessfully.
@@ -241,7 +201,7 @@ public class ValueTaskCompletionSource : ManualResetCompletionSource, IValueTask
     /// <param name="completionToken">The completion token previously obtained from <see cref="CreateTask(TimeSpan, CancellationToken)"/> method.</param>
     /// <returns><see langword="true"/> if the result is completed successfully; <see langword="false"/> if the task has been canceled or timed out.</returns>
     public bool TrySetResult(short completionToken)
-        => TrySetResult(completionToken, NullSupplier);
+        => TrySetResult(NullSupplier, completionToken);
 
     /// <summary>
     /// Creates a fresh task linked with this source.
@@ -266,17 +226,18 @@ public class ValueTaskCompletionSource : ManualResetCompletionSource, IValueTask
     /// <inheritdoc />
     void IValueTaskSource.GetResult(short token)
     {
-        if (!IsCompleted || token != version)
-            throw new InvalidOperationException();
+        if (Status != ManualResetCompletionSourceStatus.WaitForConsumption)
+            throw new InvalidOperationException(ExceptionMessages.InvalidSourceState);
+
+        if (token != version)
+            throw new InvalidOperationException(ExceptionMessages.InvalidSourceToken);
 
         // ensure that instance field access before returning to the pool to avoid
         // concurrency with Reset()
         var resultCopy = result;
         Thread.MemoryBarrier();
 
-        if (IsDerived)
-            QueueAfterConsumed();
-
+        OnConsumed<ValueTaskCompletionSource>();
         resultCopy?.Throw();
     }
 
@@ -284,15 +245,14 @@ public class ValueTaskCompletionSource : ManualResetCompletionSource, IValueTask
     ValueTaskSourceStatus IValueTaskSource.GetStatus(short token)
     {
         if (token != version)
-            throw new InvalidOperationException();
+            throw new InvalidOperationException(ExceptionMessages.InvalidSourceToken);
 
-        if (!IsCompleted)
-            return ValueTaskSourceStatus.Pending;
-
-        if (result is null)
-            return ValueTaskSourceStatus.Succeeded;
-
-        return result.SourceException is OperationCanceledException ? ValueTaskSourceStatus.Canceled : ValueTaskSourceStatus.Faulted;
+        return !IsCompleted ? ValueTaskSourceStatus.Pending : result switch
+        {
+            null => ValueTaskSourceStatus.Succeeded,
+            { SourceException: OperationCanceledException } => ValueTaskSourceStatus.Canceled,
+            _ => ValueTaskSourceStatus.Faulted,
+        };
     }
 
     /// <inheritdoc />

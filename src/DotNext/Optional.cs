@@ -223,11 +223,6 @@ public static class Optional
         => value.HasValue ? new(value.OrDefault()) : None<T>();
 }
 
-internal static class UndefinedValueSentinel
-{
-    internal static readonly object Instance = new();
-}
-
 /// <summary>
 /// A container object which may or may not contain a value.
 /// </summary>
@@ -272,7 +267,7 @@ public readonly struct Optional<T> : IEquatable<Optional<T>>, IEquatable<T>, ISt
 
         return optionalValue.Equals(null)
             ? NullValue
-            : optionalValue.Equals(UndefinedValueSentinel.Instance)
+            : optionalValue.Equals(Sentinel.Instance)
             ? UndefinedValue
             : NotEmptyValue;
     }
@@ -573,16 +568,7 @@ public readonly struct Optional<T> : IEquatable<Optional<T>>, IEquatable<T>, ISt
     public bool Equals(T? other) => !IsUndefined && EqualityComparer<T?>.Default.Equals(value, other);
 
     private bool Equals(in Optional<T> other)
-    {
-        if (kind != other.kind)
-            return false;
-
-        return kind switch
-        {
-            UndefinedValue or NullValue => true,
-            _ => EqualityComparer<T?>.Default.Equals(value, other.value),
-        };
-    }
+        => kind == other.kind && (kind is UndefinedValue or NullValue || EqualityComparer<T?>.Default.Equals(value, other.value));
 
     /// <summary>
     /// Determines whether this container stores
@@ -603,7 +589,7 @@ public readonly struct Optional<T> : IEquatable<Optional<T>>, IEquatable<T>, ISt
         null => IsNull,
         Optional<T> optional => Equals(in optional),
         T value => Equals(value),
-        _ => ReferenceEquals(other, UndefinedValueSentinel.Instance) && IsUndefined,
+        _ => ReferenceEquals(other, Sentinel.Instance) && IsUndefined,
     };
 
     /// <summary>
