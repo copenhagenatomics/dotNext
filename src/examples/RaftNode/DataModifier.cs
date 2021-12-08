@@ -5,15 +5,22 @@ using System.Diagnostics;
 
 namespace RaftNode;
 
+
 internal sealed class DataModifier : BackgroundService
 {
     private readonly IRaftCluster cluster;
     private readonly IKValueProvider valueProvider;
 
-    public DataModifier(IRaftCluster cluster, IKValueProvider provider)
+    private readonly int entrySize;
+
+    private readonly int entryN;
+
+    public DataModifier(IRaftCluster cluster, IKValueProvider provider, int EntrySize, int EntryN)
     {
         this.cluster = cluster;
         valueProvider = provider;
+        entrySize = EntrySize;
+        entryN = EntryN;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -33,11 +40,10 @@ internal sealed class DataModifier : BackgroundService
                 cycleNumber++;
 
                 var cycleNumber_bytes = BitConverter.GetBytes(cycleNumber);
-                var payloadSize= 1024;
-                var nReplicas = 16;
-                var Data = new byte[payloadSize];
 
-                for (int i = 0; i < payloadSize; i++)
+                var Data = new byte[entrySize];
+
+                for (int i = 0; i < entrySize; i++)
                     {
                         Data[i] = BitConverter.GetBytes(i)[0];//; //cycleNumber_bytes[i % 4];
                     }
@@ -57,7 +63,7 @@ internal sealed class DataModifier : BackgroundService
                     var result = true;
                     //int i;
 
-                    result = await cluster.ReplicateMultipleAsync(entry, nReplicas, stoppingToken);
+                    result = await cluster.ReplicateMultipleAsync(entry, entryN, stoppingToken);
                     /*
                     for (i = 0; i<nReplicas; i++)
                     {
@@ -72,7 +78,7 @@ internal sealed class DataModifier : BackgroundService
                     stopWatch.Stop();
                     txSum+=stopWatch.ElapsedMilliseconds;
 
-                    AsyncWriter.WriteLine($"Replicated {payloadSize} bytes {nReplicas} times in {stopWatch.ElapsedMilliseconds} ms. average over {cycleNumber}: {txSum/cycleNumber} ms result: {result}");
+                    AsyncWriter.WriteLine($"Replicated {entrySize} bytes {entryN} times in {stopWatch.ElapsedMilliseconds} ms. average over {cycleNumber}: {txSum/cycleNumber} ms result: {result}");
 
                 }
                 catch (Exception e)

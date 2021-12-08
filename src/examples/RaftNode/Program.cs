@@ -85,7 +85,7 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
     {
         var state = new SimplePersistentState(persistentStorage, new AppEventSource());
         cluster.AuditTrail = state;
-        modifier = new DataModifier(cluster, state);
+        modifier = new DataModifier(cluster, state, testCfg.EntrySize, testCfg.entryCount);
     }
     await cluster.StartAsync(CancellationToken.None);
     await (modifier?.StartAsync(CancellationToken.None) ?? Task.CompletedTask);
