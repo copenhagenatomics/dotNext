@@ -86,11 +86,11 @@ internal sealed class DataModifier : BackgroundService
                     //this is to disregard initial instability
                     if (cycleNumber > 50)
                     {
-                        AsyncWriter.WriteLine($"Repliscated {entrySize} bytes {entryN} times in {stopWatch.ElapsedMilliseconds} ms. average over {cycleNumber-50}: {txSum/(cycleNumber-50)} ms result: {result}");
+                        AsyncWriter.WriteLine($"Replicated {entrySize} bytes {entryN} times in {stopWatch.ElapsedMilliseconds} ms. average over {cycleNumber-50}: {txSum/(cycleNumber-50)} ms result: {result}");
                     }
                     else
                     {
-                        AsyncWriter.WriteLine($"Repliscated {entrySize} bytes {entryN} times in {stopWatch.ElapsedMilliseconds} ms. replicated {cycleNumber} times. result: {result}");
+                        AsyncWriter.WriteLine($"Replicated {entrySize} bytes {entryN} times in {stopWatch.ElapsedMilliseconds} ms. replicated {cycleNumber} times. result: {result}");
                     }
 
                 }

@@ -3,7 +3,7 @@
     "TransmissionBlockSize": 4096,
     "IsLocal":true, 
     "NodeCount":3, 
-    "EntrySize":1024,
+    "EntrySize":10,
     "entryCount":1,
     "NodeList": 
     {

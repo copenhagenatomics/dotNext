@@ -3,8 +3,8 @@
     "TransmissionBlockSize": 4096,
     "IsLocal":false, 
     "NodeCount":3, 
-    "EntrySize":1024,
-    "entryCount":4,
+    "EntrySize":4,
+    "entryCount":16,
     "NodeList": 
     {
         "node1": {"ip":[192, 168, 2, 244], "port":3262}, 
