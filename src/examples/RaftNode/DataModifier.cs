@@ -37,8 +37,12 @@ internal sealed class DataModifier : BackgroundService
 
             if (!leadershipToken.IsCancellationRequested)
             {   
+                if (cycleNumber == 50)
+                {
+                    txSum = 0;
+                }
                 cycleNumber++;
-
+                
                 var cycleNumber_bytes = BitConverter.GetBytes(cycleNumber);
 
                 var Data = new byte[entrySize];
@@ -78,7 +82,16 @@ internal sealed class DataModifier : BackgroundService
                     stopWatch.Stop();
                     txSum+=stopWatch.ElapsedMilliseconds;
 
-                    AsyncWriter.WriteLine($"Replicated {entrySize} bytes {entryN} times in {stopWatch.ElapsedMilliseconds} ms. average over {cycleNumber}: {txSum/cycleNumber} ms result: {result}");
+                    //show average if first 50 samples are collected
+                    //this is to disregard initial instability
+                    if (cycleNumber > 50)
+                    {
+                        AsyncWriter.WriteLine($"Repliscated {entrySize} bytes {entryN} times in {stopWatch.ElapsedMilliseconds} ms. average over {cycleNumber-50}: {txSum/(cycleNumber-50)} ms result: {result}");
+                    }
+                    else
+                    {
+                        AsyncWriter.WriteLine($"Repliscated {entrySize} bytes {entryN} times in {stopWatch.ElapsedMilliseconds} ms. replicated {cycleNumber} times. result: {result}");
+                    }
 
                 }
                 catch (Exception e)
