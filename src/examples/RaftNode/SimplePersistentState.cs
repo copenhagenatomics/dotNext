@@ -33,7 +33,7 @@ return: entry prefix type <int>
         }
         switch (prefix)
         {
-            case ByteArrayLogEntry.Prefix:
+            case 2:
             //Dict object cannot be returned. store in class.
                 Data = await ByteArrayLogEntry.TransformAsync(reader, token);
 

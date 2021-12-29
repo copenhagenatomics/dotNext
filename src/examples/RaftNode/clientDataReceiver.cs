@@ -37,8 +37,7 @@ internal sealed class clientDataReceiver
     private async Task Serve(CancellationToken stoppingToken)
     {
         Stopwatch stopWatch = new Stopwatch();
-        long txSum = 0;
-        int cycleNumber = 0;
+
 
         AsyncWriter.WriteLine($"Running leader server on port {port}");
             
@@ -161,12 +160,12 @@ internal sealed class clientDataReceiver
 
     private async Task<long> ClusterStartReplicate(byte[] data, CancellationToken stoppingToken = default)
     {
-        var entry = new ByteArrayLogEntry(data, cluster.Term);
+        var entry = new ByteArrayLogEntry(data, cluster.Term, 2);
         return await cluster.AuditTrail.AppendAsync(entry);
     }
     private async Task<bool> ClusterReplicate(byte[] data, CancellationToken stoppingToken = default)
     {
-        var entry = new ByteArrayLogEntry(data, cluster.Term);
+        var entry = new ByteArrayLogEntry(data, cluster.Term, 2);
         return await cluster.ReplicateAsync(entry, stoppingToken);
     }
 }

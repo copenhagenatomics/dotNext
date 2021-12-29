@@ -23,7 +23,7 @@ internal sealed class DataModifier : BackgroundService
         int cycleNumber = 0;
         while (!stoppingToken.IsCancellationRequested)
         {
-            await Task.Delay(400, stoppingToken).ConfigureAwait(false);
+            await Task.Delay(1000, stoppingToken).ConfigureAwait(false);
 
             var leadershipToken = cluster.LeadershipToken;
             //AsyncWriter.WriteLine($"LeadershipToken = {leadershipToken.IsCancellationRequested}");
@@ -33,8 +33,8 @@ internal sealed class DataModifier : BackgroundService
                 cycleNumber++;
 
                 var cycleNumber_bytes = BitConverter.GetBytes(cycleNumber);
-                var payloadSize= 1024;
-                var nReplicas = 16;
+                var payloadSize= 10;
+                var nReplicas = 1;
                 var Data = new byte[payloadSize];
 
                 for (int i = 0; i < payloadSize; i++)
@@ -43,7 +43,7 @@ internal sealed class DataModifier : BackgroundService
                     }
                 
 
-                var entry = new ByteArrayLogEntry(Data, cluster.Term);
+                var entry = new ByteArrayLogEntry(Data, cluster.Term, 2);
                 //AsyncWriter.Write(entry.ToString());
 
                 var source = stoppingToken.LinkTo(leadershipToken);

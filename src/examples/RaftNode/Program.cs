@@ -94,6 +94,7 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
         sensorSim = new SensorSimulator(replicator, 1000);
         
         dataReciever = new clientDataReceiver(cluster, config.HostEndPoint.Port+100);
+        modifier = new DataModifier(cluster, state);
     }
     else
     {
@@ -108,6 +109,7 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
         sensorSim.RunThread(CancellationToken.None);
         dataReciever.RunThread(CancellationToken.None);
         AsyncWriter.WriteLine("done");
+        await (modifier?.StartAsync(CancellationToken.None) ?? Task.CompletedTask);
     }
     else
     {

@@ -11,21 +11,22 @@ using DotNext.Text;
 
 namespace RaftNode
 {
-public readonly struct ByteArrayLogEntry :  IRaftLogEntry
+public class ByteArrayLogEntry :  IRaftLogEntry
 {
 
 
  bool IDataTransferObject.IsReusable => true;
-  public const int Prefix = 2;
+  public short Prefix = 2;
 
   //private readonly Dictionary<string, double>? payload;
-  private readonly byte[] payload;
-  public ByteArrayLogEntry(byte[] Payload, long term)
+  private  byte[] payload;
+  public ByteArrayLogEntry(byte[] Payload, long term, short prefix = 2)
   {
     
     Term = term;
     Timestamp = DateTimeOffset.Now;
     payload = Payload; 
+    Prefix = prefix;
   }
 
   public long Term { get; }
@@ -36,9 +37,9 @@ public readonly struct ByteArrayLogEntry :  IRaftLogEntry
     get
     {
 
-      long result = 4 + payload.Length + 4;
+      long result = 4 + payload.Length + 4; //prefix + payload + checksum
 
-      AsyncWriter.WriteLine($"Get length of payload: {result}");
+      //AsyncWriter.WriteLine($"Get length of payload: {result}");
       return result;
     }
   }
@@ -65,7 +66,7 @@ public readonly struct ByteArrayLogEntry :  IRaftLogEntry
 
 public override string? ToString()
 {
-  string result = $"[byteArrayLogEntry of length: {payload.Length}\n";
+  string result = $"[SensorDataLogEntry of length: {payload.Length}\n";
 
           int idx = 0;
         AsyncWriter.WriteLine($"Data:\n");
