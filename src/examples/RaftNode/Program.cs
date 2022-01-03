@@ -65,6 +65,13 @@ static Task UseAspNetCoreHost(int port, string? persistentStorage = null)
     .RunAsync();
 }
 
+
+static bool testcommitcallback(LogEntryContent content)
+{
+    AsyncWriter.WriteLine($"callback for index {content.index}");
+    return true;
+}
+
 static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string? persistentStorage, TestConfiguration? testCfg = null)
 {
     AddMembersToCluster(config.UseInMemoryConfigurationStorage(), persistentStorage, testCfg);
@@ -86,7 +93,7 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
     var replicator = default(SensorDataReplicator?);
     var dataReciever = default(clientDataReceiver?);
 
-    var state = new SimplePersistentState(persistentStorage, new AppEventSource());
+    var state = new SimplePersistentState(persistentStorage, new AppEventSource(), testcommitcallback);
     cluster.AuditTrail = state;
     if (testCfg.sensorData)
     {

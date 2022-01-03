@@ -135,6 +135,8 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
 
     public ConcurrentQueue<LogEntryContent> log;
 
+    Func<LogEntryContent, bool> CommitCallback = null;
+
     public SimplePersistentState(string path, AppEventSource source)
         : base(path, 50, CreateOptions(source))
     {
@@ -145,7 +147,12 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
     public SimplePersistentState(IConfiguration configuration, AppEventSource source)
         : this(configuration[LogLocation], source)
     {
-        log =  new ConcurrentQueue<LogEntryContent>();
+    }
+
+    public SimplePersistentState(string path, AppEventSource source, Func<LogEntryContent, bool> commitCallback)
+        : this(path, source)
+    {
+        CommitCallback = commitCallback;
     }
 
     private static Options CreateOptions(AppEventSource source)
@@ -206,6 +213,11 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
                 AsyncWriter.WriteLine($"applying entry index {newEntry.index} to content (size = {log.Count()})");
             }
             log.Enqueue(newEntry);
+
+            if (CommitCallback != null)
+            {
+                CommitCallback(newEntry);
+            }
         }
         else
         {
