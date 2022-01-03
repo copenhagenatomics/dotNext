@@ -65,13 +65,6 @@ static Task UseAspNetCoreHost(int port, string? persistentStorage = null)
     .RunAsync();
 }
 
-
-static bool testcommitcallback(LogEntryContent content)
-{
-    AsyncWriter.WriteLine($"callback for index {content.index}");
-    return true;
-}
-
 static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string? persistentStorage, TestConfiguration? testCfg = null)
 {
     AddMembersToCluster(config.UseInMemoryConfigurationStorage(), persistentStorage, testCfg);
@@ -92,8 +85,9 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
     var sensorSim = default(SensorSimulator?);
     var replicator = default(SensorDataReplicator?);
     var dataReciever = default(clientDataReceiver?);
+    var logicMachine= new decisionLogic();
 
-    var state = new SimplePersistentState(persistentStorage, new AppEventSource(), testcommitcallback);
+    var state = new SimplePersistentState(persistentStorage, new AppEventSource(), logicMachine.CommitHandler);
     cluster.AuditTrail = state;
     if (testCfg.sensorData)
     {
@@ -115,6 +109,7 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
         replicator.RunThread(CancellationToken.None);
         sensorSim.RunThread(CancellationToken.None);
         dataReciever.RunThread(CancellationToken.None);
+        logicMachine.RunThread(CancellationToken.None);
         AsyncWriter.WriteLine("done");
         await (modifier?.StartAsync(CancellationToken.None) ?? Task.CompletedTask);
     }
