@@ -2,17 +2,19 @@
 using DotNext.IO;
 using DotNext.Net.Cluster.Consensus.Raft;
 using static DotNext.Threading.AtomicInt64;
+using System.Collections.Concurrent;
 
 namespace RaftNode;
 
 
+struct LogEntryContent {
+    public byte[] content;
+    public long index;
+}
+
 public class MyInterpreter : IDataTransferObject.ITransformation<int>
 {
-
     public byte[]? Data;
-
-
-
 
 /*
 Called by infrastructure. uses MyLogEntry to transform entry to Dictionary object, stored in class.
@@ -57,13 +59,6 @@ return: entry prefix type <int>
         
     }
 
-public int UpdateLocalState(ref byte[] data)
-{
-    data = Data != null ? Data : new byte[0];
-
-    return 1;
-    
-}
 
     public int PrintState(ref byte[] data)
     {
@@ -89,13 +84,16 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
 
     private sealed class SimpleSnapshotBuilder : IncrementalSnapshotBuilder
     {
-        private byte[] content;
+
+        public ConcurrentQueue<LogEntryContent> log;
+        //private byte[] content;
 
         public SimpleSnapshotBuilder(in SnapshotBuilderContext context, MyInterpreter interpreter)
             : base(context)
         {
                 Interpreter = interpreter;
-                content = new byte[0];
+                
+                log =  new ConcurrentQueue<LogEntryContent>();
         }
 
         private MyInterpreter Interpreter;
@@ -104,16 +102,20 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
         {
             if (entry.Length != 0)
             {
-
+                var newEntry = new LogEntryContent {content = await Interpreter.InterpretAsync(entry), index = entry.Index};
+                
+                AsyncWriter.WriteLine($"snapshotbuilder applying entry index {newEntry.index} to content (size = {log.Count})");
+                log.Enqueue(newEntry);
                 if (entry.IsSnapshot)
                 {
-                    content = await Interpreter.InterpretAsync(entry);
+                    
                 }
                 else
                 {
-                    await Interpreter.InterpretAsync(entry);
-                    //Interpreter.UpdateLocalState(ref content);
+                    
                 }
+
+                
             }
             else
             {
@@ -124,25 +126,26 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
 
         public override ValueTask WriteToAsync<TWriter>(TWriter writer, CancellationToken token)
         {
-            var entry = new ByteArrayLogEntry(content, 0);
+            AsyncWriter.WriteLine($"snapshot writig index {log.Last().index}");
+            var entry = new ByteArrayLogEntry(log.Last().content, 0);
             return entry.WriteToAsync(writer, token);
         }
             //=> writer.WriteAsync(value, token);
     }
 
-    
-    private volatile byte[] content;
+    public ConcurrentQueue<LogEntryContent> log;
 
     public SimplePersistentState(string path, AppEventSource source)
         : base(path, 50, CreateOptions(source))
     {
-        content = new byte[0];
+        
+        log =  new ConcurrentQueue<LogEntryContent>();
     }
 
     public SimplePersistentState(IConfiguration configuration, AppEventSource source)
         : this(configuration[LogLocation], source)
     {
-        content = new byte[0];
+        log =  new ConcurrentQueue<LogEntryContent>();
     }
 
     private static Options CreateOptions(AppEventSource source)
@@ -176,17 +179,10 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
         return result;
     }
 
-    byte[] IKValueProvider.Value => content;
-   // long ISupplier<long>.Invoke() => content.VolatileRead();
+    byte[] IKValueProvider.Value => log.Last().content;
+   
 
-/*
-    private async ValueTask UpdateValue(LogEntry entry)
-    {
-        var value = await entry.ToTypeAsync<long, LogEntry>().ConfigureAwait(false);
-        content.VolatileWrite(value);
-        AsyncWriter.WriteLine($"Accepting value {value}");
-    }
-    */
+
     protected override async ValueTask ApplyAsync(LogEntry entry)
     {
         AsyncWriter.WriteLine($"ApplyAsync entry length = {entry.Length}");
@@ -195,19 +191,21 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
         {
             MyInterpreter interpreter = new MyInterpreter();
             
+            var newEntry = new LogEntryContent {content = await interpreter.InterpretAsync(entry), index = entry.Index};    
+                
+            
+            
             if (entry.IsSnapshot)
             {
             // interpret snapshot
-                AsyncWriter.WriteLine("Got Snapshot, overwritting content.");
-                
-                content = await interpreter.InterpretAsync(entry);
+
+                AsyncWriter.WriteLine($"Got Snapshot, adding index {newEntry.index} (size = {log.Count})");
             }
             else
             {
-                await interpreter.InterpretAsync(entry);
-                AsyncWriter.WriteLine("applying entry to content");
-                interpreter.UpdateLocalState(ref content);
+                AsyncWriter.WriteLine($"applying entry index {newEntry.index} to content (size = {log.Count()})");
             }
+            log.Enqueue(newEntry);
         }
         else
         {
