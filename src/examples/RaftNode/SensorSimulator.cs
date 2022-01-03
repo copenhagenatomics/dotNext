@@ -43,6 +43,7 @@ internal sealed class SensorSimulator
     private void simulateSensorCycle(int index)
     {
         var data = new sensorData(){
+                entryType = 1, //Sensordata type
                 magicvalA = 0x0f0f0f0f,
                 index = index,
                 magicvalB = 0x5555AAAA

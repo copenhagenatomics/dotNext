@@ -30,8 +30,23 @@ private static BlockingCollection<LogEntryContent> unhandledEntries = new Blocki
 
     public void HandleEntry(LogEntryContent entry)
     {
-        AsyncWriter.WriteLine("Taking entry");
+        var entryType = entry.content[0];
+        AsyncWriter.Write("Taking entry type: ");
 
+
+        switch (entryType)
+        {
+        case 1: //SensorData
+            AsyncWriter.WriteLine("SensorData");
+            break;
+        case 2: //D! command
+            AsyncWriter.WriteLine("D!");
+            break;
+        default: //error
+            AsyncWriter.WriteLine("Error");
+            break;
+
+        }
     }
 
 }

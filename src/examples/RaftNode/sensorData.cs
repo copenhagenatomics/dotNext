@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 namespace RaftNode;
 
 struct sensorData {
+    public int entryType;
     public int magicvalA;
     public int index;
     public int magicvalB;
