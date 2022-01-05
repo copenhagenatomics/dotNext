@@ -10,6 +10,8 @@ namespace RaftNode;
 struct LogEntryContent {
     public byte[] content;
     public long index;
+
+    public DateTimeOffset timestamp;
 }
 
 public class MyInterpreter : IDataTransferObject.ITransformation<int>
@@ -102,9 +104,9 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
         {
             if (entry.Length != 0)
             {
-                var newEntry = new LogEntryContent {content = await Interpreter.InterpretAsync(entry), index = entry.Index};
+                var newEntry = new LogEntryContent {content = await Interpreter.InterpretAsync(entry), index = entry.Index, timestamp = entry.Timestamp};
                 
-                AsyncWriter.WriteLine($"snapshotbuilder applying entry index {newEntry.index} to content (size = {log.Count})");
+                //AsyncWriter.WriteLine($"snapshotbuilder applying entry index {newEntry.index} to content (size = {log.Count}), timestamp = {entry.Timestamp.ToString()}");
                 log.Enqueue(newEntry);
                 if (entry.IsSnapshot)
                 {
@@ -198,7 +200,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
         {
             MyInterpreter interpreter = new MyInterpreter();
             
-            var newEntry = new LogEntryContent {content = await interpreter.InterpretAsync(entry), index = entry.Index};    
+            var newEntry = new LogEntryContent {content = await interpreter.InterpretAsync(entry), index = entry.Index, timestamp = entry.Timestamp};    
                 
             
             

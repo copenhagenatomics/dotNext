@@ -79,7 +79,7 @@ internal sealed class SensorDataReplicator
             SendSensorData(addrStr, databytes, 100);    
             stopWatch.Stop();
             
-            AsyncWriter.WriteLine($"replicator:\tDone Sending index {data.index} after {stopWatch.ElapsedMilliseconds} ms");
+            //AsyncWriter.WriteLine($"replicator:\tDone Sending index {data.index} after {stopWatch.ElapsedMilliseconds} ms");
 
         }
         else
@@ -105,7 +105,7 @@ internal sealed class SensorDataReplicator
         using (var requestSocket = new RequestSocket($">tcp://{address}"))
         {
              
-            AsyncWriter.WriteLine("replicator:\trequestSocket : Sending data");
+            //AsyncWriter.WriteLine("replicator:\trequestSocket : Sending data");
 
             if (!requestSocket.TrySendFrame(System.TimeSpan.FromMilliseconds(timeout), Data, false))
             {
@@ -117,7 +117,7 @@ internal sealed class SensorDataReplicator
                 AsyncWriter.WriteLine("replicator:\tReply timeout");
                 return false;
             }
-            AsyncWriter.WriteLine($"replicator:\trecieved reply: '{reply}'");
+            //AsyncWriter.WriteLine($"replicator:\trecieved reply: '{reply}'");
 
 
 
@@ -130,12 +130,25 @@ internal sealed class SensorDataReplicator
                         return false;
                     }
                     
-                    AsyncWriter.WriteLine($"replicator:\treplication result: {reply}");
+                    //AsyncWriter.WriteLine($"replicator:\treplication result: {reply}");
                     switch (reply.Substring(0, 4))
                     {
                         case "good":
-                            AsyncWriter.WriteLine($"replicator:\tsucces! index");
-                            return true;
+
+                            if (Int32.TryParse(reply.Substring(4), out int index))
+                            {
+                                AsyncWriter.WriteLine($"replicator:\tsucces index {index}");
+                                cluster.AuditTrail.WaitForCommitAsync(index).ConfigureAwait(false);
+                                AsyncWriter.WriteLine($"replicator:\tcommit index {index}");
+                                return true;
+                            }
+                            else
+                            {
+                                Console.WriteLine("String could not be parsed.");
+                                return false;
+                            }
+                            
+                            
                         case "fail":
                         default:
                             AsyncWriter.WriteLine("replicator:\treply error");

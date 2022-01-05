@@ -23,7 +23,7 @@ internal sealed class DataModifier : BackgroundService
         int cycleNumber = 0;
         while (!stoppingToken.IsCancellationRequested)
         {
-            await Task.Delay(2000, stoppingToken).ConfigureAwait(false);
+            await Task.Delay(5000, stoppingToken).ConfigureAwait(false);
 
             var leadershipToken = cluster.LeadershipToken;
             //AsyncWriter.WriteLine($"LeadershipToken = {leadershipToken.IsCancellationRequested}");

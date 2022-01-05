@@ -50,7 +50,7 @@ internal sealed class clientDataReceiver
             {
                 byte[] messageBytes = server.ReceiveFrameBytes(out bool more);
 
-                AsyncWriter.WriteLine($"Leader:\tReceived {messageBytes}, more = {more}, replicating");
+                //AsyncWriter.WriteLine($"Leader:\tReceived {messageBytes}, more = {more}, replicating");
                 //Reply instantly
                 var message = sensorData.fromBytes(messageBytes);
                 
@@ -73,9 +73,9 @@ internal sealed class clientDataReceiver
                     }
                     
                     stopWatch.Stop();
-                    var replymsg = replicateSucces ? $"good index {replicationIndex}" : "fail";
+                    var replymsg = replicateSucces ? $"good {replicationIndex}" : "fail";
 
-                    AsyncWriter.WriteLine($"Leader:\treplication {replymsg} after {stopWatch.ElapsedMilliseconds} ms. Sending reply");
+                    //AsyncWriter.WriteLine($"Leader:\treplication {replymsg} after {stopWatch.ElapsedMilliseconds} ms. Sending reply");
                     if (!server.TrySendFrame(TimeSpan.FromMilliseconds(100), replymsg, false))
                     {
                         AsyncWriter.WriteLine("Leader:\tReply transmission failed");

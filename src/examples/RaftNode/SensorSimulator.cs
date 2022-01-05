@@ -49,7 +49,7 @@ internal sealed class SensorSimulator
                 magicvalB = 0x5555AAAA
         };
 
-        AsyncWriter.WriteLine($"sensorSim:\tCreated sensorData index {data.index}");
+        //AsyncWriter.WriteLine($"sensorSim:\tCreated sensorData index {data.index}");
 
         replicator.QueueReplication(data);
     }
