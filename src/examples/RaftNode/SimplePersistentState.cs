@@ -194,7 +194,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
 
     protected override async ValueTask ApplyAsync(LogEntry entry)
     {
-        AsyncWriter.WriteLine($"ApplyAsync entry length = {entry.Length}");
+        //AsyncWriter.WriteLine($"ApplyAsync entry length = {entry.Length}");
         
         if (entry.Length != 0)
         {
@@ -203,7 +203,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
             var newEntry = new LogEntryContent {content = await interpreter.InterpretAsync(entry), index = entry.Index, timestamp = entry.Timestamp};    
                 
             
-            
+            /*
             if (entry.IsSnapshot)
             {
             // interpret snapshot
@@ -214,6 +214,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
             {
                 AsyncWriter.WriteLine($"applying entry index {newEntry.index} to content (size = {log.Count()})");
             }
+            */
             log.Enqueue(newEntry);
 
             if (CommitCallback != null)

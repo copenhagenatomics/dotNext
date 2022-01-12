@@ -9,11 +9,13 @@ internal sealed class DataModifier : BackgroundService
 {
     private readonly IRaftCluster cluster;
     private readonly IKValueProvider valueProvider;
+    private readonly validationServer decisionValidator;
 
-    public DataModifier(IRaftCluster cluster, IKValueProvider provider)
+    public DataModifier(IRaftCluster cluster, IKValueProvider provider, validationServer validator)
     {
         this.cluster = cluster;
         valueProvider = provider;
+        decisionValidator = validator;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -23,7 +25,7 @@ internal sealed class DataModifier : BackgroundService
         int cycleNumber = 0;
         while (!stoppingToken.IsCancellationRequested)
         {
-            await Task.Delay(5000, stoppingToken).ConfigureAwait(false);
+            await Task.Delay(700, stoppingToken).ConfigureAwait(false);
 
             var leadershipToken = cluster.LeadershipToken;
             //AsyncWriter.WriteLine($"LeadershipToken = {leadershipToken.IsCancellationRequested}");

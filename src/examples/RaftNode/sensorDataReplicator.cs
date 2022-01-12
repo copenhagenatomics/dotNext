@@ -73,7 +73,7 @@ internal sealed class SensorDataReplicator
             var databytes = sensorData.getBytes(data);
 
            
-            AsyncWriter.WriteLine($"replicator:\tSending data index: '{data.index}' to leader {leader.Address.ToString()}:{port.ToString()}");
+            //AsyncWriter.WriteLine($"replicator:\tSending data index: '{data.index}' to leader {leader.Address.ToString()}:{port.ToString()}");
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
             SendSensorData(addrStr, databytes, 100);    
@@ -137,9 +137,9 @@ internal sealed class SensorDataReplicator
 
                             if (Int32.TryParse(reply.Substring(4), out int index))
                             {
-                                AsyncWriter.WriteLine($"replicator:\tsucces index {index}");
+                                //AsyncWriter.WriteLine($"replicator:\tsucces index {index}");
                                 cluster.AuditTrail.WaitForCommitAsync(index).ConfigureAwait(false);
-                                AsyncWriter.WriteLine($"replicator:\tcommit index {index}");
+                                //AsyncWriter.WriteLine($"replicator:\tcommit index {index}");
                                 return true;
                             }
                             else

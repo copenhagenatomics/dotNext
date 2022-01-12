@@ -3,9 +3,8 @@ using System.Runtime.InteropServices;
 namespace RaftNode;
 
 struct controllerData {
-    public int magicvalA;
-    public int index;
-    public int magicvalB;
+    public string hashValue;
+    public long index;
     
     public static byte[] getBytes(controllerData str) 
     {

@@ -85,22 +85,21 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
     var sensorSim = default(SensorSimulator?);
     var replicator = default(SensorDataReplicator?);
     var dataReciever = default(clientDataReceiver?);
+    var decisionLogicValidator = default(validationServer?);
     var logicMachine= new decisionLogic();
 
     var state = new SimplePersistentState(persistentStorage, new AppEventSource(), logicMachine.CommitHandler);
     cluster.AuditTrail = state;
-    if (testCfg.sensorData)
-    {
-        replicator = new SensorDataReplicator(cluster, 10);
-        sensorSim = new SensorSimulator(replicator, 1000);
-        
-        dataReciever = new clientDataReceiver(cluster, config.HostEndPoint.Port+100);
-        modifier = new DataModifier(cluster, state);
-    }
-    else
-    {
-        modifier = new DataModifier(cluster, state);
-    }
+
+    replicator = new SensorDataReplicator(cluster, 10);
+    sensorSim = new SensorSimulator(replicator, 100);
+    logicMachine.cluster = cluster;
+    dataReciever = new clientDataReceiver(cluster, config.HostEndPoint.Port+100);
+    decisionLogicValidator = new validationServer(cluster, config.HostEndPoint.Port+50);
+    logicMachine.decisionValidator = decisionLogicValidator;
+    modifier = new DataModifier(cluster, state, decisionLogicValidator);
+    
+ 
     await cluster.StartAsync(CancellationToken.None);
 
     if (testCfg.sensorData)
@@ -110,6 +109,7 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
         sensorSim.RunThread(CancellationToken.None);
         dataReciever.RunThread(CancellationToken.None);
         logicMachine.RunThread(CancellationToken.None);
+        decisionLogicValidator.RunThread(CancellationToken.None);
         AsyncWriter.WriteLine("done");
         await (modifier?.StartAsync(CancellationToken.None) ?? Task.CompletedTask);
     }
