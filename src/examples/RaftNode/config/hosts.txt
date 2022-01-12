@@ -1,3 +1,7 @@
 pi@DistDev1
 pi@DistDev2
-pi@DistDev3
+pi@Pi-hat1
+pi@Pihat14
+pi@Pihat15
+pi@Pihat3
+pi@Pihat4
