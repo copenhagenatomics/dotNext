@@ -84,7 +84,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
         var value = await entry.ToTypeAsync<BigStruct, LogEntry>().ConfigureAwait(false);
         lock (contentLock)
             content = value;
-        if (value.Field1 % 1000 == 0)
+        if (value.Field1 % 100 == 0)
         {
             Console.WriteLine($"Accepting value {value.Field1} - time since last 1k value: {timeTo1kValues.Elapsed}");
             timeTo1kValues.Restart();

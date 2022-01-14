@@ -19,6 +19,7 @@ internal sealed class DataModifier : BackgroundService
         bool resuming = true;
         while (!stoppingToken.IsCancellationRequested)
         {
+            await Task.Delay(1000, stoppingToken).ConfigureAwait(false);
             var leadershipToken = cluster.LeadershipToken;
             if (!leadershipToken.IsCancellationRequested)
             {
