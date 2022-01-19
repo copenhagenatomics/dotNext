@@ -45,7 +45,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
     {
         var result = new Options
         {   
-            BufferSize = 4096,
+            BufferSize = 4096 * 2,
             InitialPartitionSize = 50 * 8,
             CompactionMode = CompactionMode.Sequential,//sequential is the default
             WriteCounter = new("WAL.Writes", source),
