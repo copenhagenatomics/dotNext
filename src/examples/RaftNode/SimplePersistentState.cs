@@ -32,7 +32,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
     private readonly Stopwatch timeTo1kValues = new();
 
     public SimplePersistentState(string path, AppEventSource source)
-        : base(path, 1000, CreateOptions(source))
+        : base(path, 50, CreateOptions(source))
     {
     }
 
@@ -45,8 +45,8 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
     {
         var result = new Options
         {   
-            BufferSize = 4096 * 1000,
-            InitialPartitionSize = 50 * 8 * 1000,
+            BufferSize = 4096,
+            InitialPartitionSize = 50 * 8,
             CompactionMode = CompactionMode.Sequential,//sequential is the default
             WriteCounter = new("WAL.Writes", source),
             ReadCounter = new("WAL.Reads", source),
