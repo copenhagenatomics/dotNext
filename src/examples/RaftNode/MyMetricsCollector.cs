@@ -1,11 +1,4 @@
 using DotNext.Net.Cluster.Consensus.Raft;
-using System;
-
-using DotNext.Net.Cluster.Consensus.Raft.Http;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace RaftNode
 {

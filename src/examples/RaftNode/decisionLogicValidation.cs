@@ -1,6 +1,4 @@
-using DotNext;
 using DotNext.Net.Cluster.Consensus.Raft;
-using DotNext.Threading;
 using System.Diagnostics;
 using NetMQ;
 using NetMQ.Sockets;
@@ -156,10 +154,7 @@ internal sealed class validationServer
                     AsyncWriter.WriteLine("rejection complete");
                     voteComplete = true;
                     throw new InvalidOperationException("Logfile cannot be read-only");
-                }
-
-
-                              
+                }           
             }
         }
     }

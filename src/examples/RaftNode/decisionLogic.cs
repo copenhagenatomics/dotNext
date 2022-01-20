@@ -148,16 +148,6 @@ public decisionLogic()
                     return false;
 
             }
-        /*
-        Stopwatch stopWatch = new Stopwatch();
-        stopWatch.Start();
-
-
-           
-        stopWatch.Stop();
-        */
-        //AsyncWriter.WriteLine($"replicator:\tDone Sending index {data.index} after {stopWatch.ElapsedMilliseconds} ms");
-
         }
     }
 

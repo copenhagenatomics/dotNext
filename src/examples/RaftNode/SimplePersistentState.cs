@@ -202,19 +202,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, IKValuePr
             
             var newEntry = new LogEntryContent {content = await interpreter.InterpretAsync(entry), index = entry.Index, timestamp = entry.Timestamp};    
                 
-            
-            /*
-            if (entry.IsSnapshot)
-            {
-            // interpret snapshot
-
-                AsyncWriter.WriteLine($"Got Snapshot, adding index {newEntry.index} (size = {log.Count})");
-            }
-            else
-            {
-                AsyncWriter.WriteLine($"applying entry index {newEntry.index} to content (size = {log.Count()})");
-            }
-            */
+        
             log.Enqueue(newEntry);
 
             if (CommitCallback != null)

@@ -1,11 +1,6 @@
 using DotNext.IO;
-using DotNext.IO.Log;
 using DotNext.Net.Cluster.Consensus.Raft;
-using System;
-using System.Threading.Tasks;
-using System.Threading;
 using System.Text;
-using System.Collections.Generic;
 using DotNext.Text;
 
 
@@ -105,25 +100,6 @@ public static async ValueTask<Dictionary<string, double>?> TransformAsync<TReade
     }
     return result;
 }
-/*
-public static async ValueTask<Dictionary<string, string>> DecodeAsync<TReader>(TReader reader, CancellationToken token)
-    where TReader : notnull, IAsyncBinaryReader
-  {
-    var count = await reader.ReadInt32Async(true, token);
-    var result = new Dictionary<string, string>(count);
-    // deserialize entries
-    var context = new DecodingContext(Encoding.UTF8, true);
-    while (count-- > 0)
-    {
-       string key = await reader.ReadStringAsync(LengthFormat.Plain, context, token);
-       string value = await reader.ReadStringAsync(LengthFormat.Plain, context, token);
-       result.Add(key, value);
-    }
-    return result;
-}
-*/
-
-
 }
 
 

@@ -61,16 +61,7 @@ internal sealed class DataModifier : BackgroundService
                     //int i;
 
                     result = await cluster.ReplicateMultipleAsync(entry, nReplicas, stoppingToken);
-                    /*
-                    for (i = 0; i<nReplicas; i++)
-                    {
-                        result = await cluster.ReplicateAsync(entry, stoppingToken);
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                    */
+
                     
                     stopWatch.Stop();
                     txSum+=stopWatch.ElapsedMilliseconds;

@@ -105,7 +105,7 @@ public static async ValueTask<byte[]> TransformAsync<TReader>(TReader reader, Ca
     }
     //read crc
     var chksum = await reader.ReadInt32Async(true, token);
-    if (chksum != 0x0FF0F0F0)
+    if (chksum != 0x0FF0F0F0) //TODO: Implement actual cheksum
     {
       AsyncWriter.WriteLine($"checksum error: 0x{chksum:X8}, length: {length}");
     }
