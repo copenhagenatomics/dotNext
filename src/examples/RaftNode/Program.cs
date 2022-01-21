@@ -95,14 +95,18 @@ static async Task UseConfiguration(RaftCluster.NodeConfiguration config, string?
         address = GetNodeEndpoint("node3");
         builder.Add(ClusterMemberId.FromEndPoint(address), address);
 
+        address = GetNodeEndpoint("node4");
+        builder.Add(ClusterMemberId.FromEndPoint(address), address);
+
         builder.Build();
     }
 }
 
 static IPEndPoint GetNodeEndpoint(string persistentStorage) =>
-    persistentStorage == "node1" ? IPEndPoint.Parse("169.254.241.37:3262")
-    : persistentStorage == "node2" ? IPEndPoint.Parse("169.254.148.198:3262")
-    : persistentStorage == "node3" ? IPEndPoint.Parse("169.254.105.52:3262")
+    persistentStorage == "node1" ? IPEndPoint.Parse("169.254.143.215:3262")
+    : persistentStorage == "node2" ? IPEndPoint.Parse("169.254.12.127:3262")
+    : persistentStorage == "node3" ? IPEndPoint.Parse("169.254.62.165:3262")
+    : persistentStorage == "node4" ? IPEndPoint.Parse("169.254.83.56:3262")
     : throw new ArgumentException("unknown node");
 
 static Task UseUdpTransport(int port, string? persistentStorage)
