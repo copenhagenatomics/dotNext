@@ -56,7 +56,12 @@ internal sealed class DataModifier : BackgroundService
                 }
             }
             else
+            {
                 resuming = true;
+                //note this timeout might actually be longer depending on the system clock resolution i.e. 15 ms in windows
+                //we use WhenAny to make the TaskCancelledException silent if the stoppingToken is triggered
+                await Task.WhenAny(Task.Delay(1, stoppingToken));
+            }
         }
     }
 }
