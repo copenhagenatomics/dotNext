@@ -30,19 +30,8 @@ internal sealed class DataModifier : BackgroundService
                 var linkedToken = source.Token;
                 try
                 {
-                    for (int i = 1; i <= 15; i++)
-                    {
-                        var entry = new BigLogEntry { Content = new BigStruct(), Term = cluster.Term };
-                        await cluster.AuditTrail.AppendAsync(entry, linkedToken).ConfigureAwait(false);
-                    }
-
-                    var lastEntry = new BigLogEntry { Content = new BigStruct(), Term = cluster.Term };
-                    var lastIndex = await cluster.AuditTrail.AppendAsync(lastEntry, linkedToken).ConfigureAwait(false);
-
-                    await cluster.ForceReplicationAsync(linkedToken).ConfigureAwait(false);
-                    await cluster.AuditTrail.WaitForCommitAsync(lastIndex, linkedToken).ConfigureAwait(false);
-                    if (cluster.AuditTrail.Term != lastEntry.Term)
-                        Console.WriteLine($"failed to replicate last entry");
+                    var entry = new BigLogEntry { Content = new BigStruct(), Term = cluster.Term };
+                    await cluster.ReplicateAsync(entry, linkedToken);
                 }
                 catch (Exception e)
                 {
