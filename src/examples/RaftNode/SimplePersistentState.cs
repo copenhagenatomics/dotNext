@@ -44,8 +44,8 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
     {
         var result = new Options
         {   
-            BufferSize = 4096 * 2,
-            InitialPartitionSize = 50 * 8,
+            BufferSize = 32 * 1024,
+            InitialPartitionSize = 50 * System.Runtime.CompilerServices.Unsafe.SizeOf<BigStruct>(),
             CompactionMode = CompactionMode.Sequential,//sequential is the default
             WriteMode = WriteMode.AutoFlush,
             MaxConcurrentReads = 3,
@@ -57,6 +57,8 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
             LockContentionCounter = new("WAL.LockContention", source),
             LockDurationCounter = new("WAL.LockDuration", source),
         };
+
+        Console.WriteLine($"InitialPartitionSize = {result.InitialPartitionSize}");
 
         result.WriteCounter.DisplayUnits =
             result.ReadCounter.DisplayUnits =
