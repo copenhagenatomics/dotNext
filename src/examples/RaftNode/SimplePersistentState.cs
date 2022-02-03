@@ -1,7 +1,6 @@
 ﻿using DotNext;
 using DotNext.IO;
 using DotNext.Net.Cluster.Consensus.Raft;
-using System.Diagnostics;
 
 namespace RaftNode;
 
@@ -25,10 +24,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
             => writer.WriteAsync(value, token);
     }
 
-    private int entriesApplied;
-    private readonly object contentLock = new ();
     private BigStruct content;
-    private readonly Stopwatch timeTo1kValues = new();
 
     public SimplePersistentState(string path, AppEventSource source)
         : base(path, 50, CreateOptions(source))
@@ -43,12 +39,10 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
     private static Options CreateOptions(AppEventSource source)
     {
         var result = new Options
-        {   
-            BufferSize = 32 * 1024,
+        {
             InitialPartitionSize = 50 * System.Runtime.CompilerServices.Unsafe.SizeOf<BigStruct>(),
-            CompactionMode = CompactionMode.Sequential,//sequential is the default
+            BufferSize = 32 * 1024,
             WriteMode = WriteMode.AutoFlush,
-            MaxConcurrentReads = 3,
             CacheEvictionPolicy = LogEntryCacheEvictionPolicy.OnSnapshot,
             WriteCounter = new("WAL.Writes", source),
             ReadCounter = new("WAL.Reads", source),
@@ -57,8 +51,6 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
             LockContentionCounter = new("WAL.LockContention", source),
             LockDurationCounter = new("WAL.LockDuration", source),
         };
-
-        Console.WriteLine($"InitialPartitionSize = {result.InitialPartitionSize}");
 
         result.WriteCounter.DisplayUnits =
             result.ReadCounter.DisplayUnits =
@@ -78,22 +70,12 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
         return result;
     }
 
-    BigStruct ISupplier<BigStruct>.Invoke() 
-    { 
-        lock (contentLock) return content; 
-    }
+    BigStruct ISupplier<BigStruct>.Invoke() => content;
 
     private async ValueTask UpdateValue(LogEntry entry)
     {
-        var value = await entry.ToTypeAsync<BigStruct, LogEntry>().ConfigureAwait(false);
-        lock (contentLock)
-            content = value;
-        var newEntryNumber = Interlocked.Increment(ref entriesApplied);
-        if (newEntryNumber % 1000 == 0)
-        {
-            Console.WriteLine($"Accepting entry number {newEntryNumber} - time since last 1k value: {timeTo1kValues.Elapsed}");
-            timeTo1kValues.Restart();
-        }
+        content = await entry.ToTypeAsync<BigStruct, LogEntry>().ConfigureAwait(false);
+        //Console.WriteLine($"Accepting value");
     }
 
     protected override ValueTask ApplyAsync(LogEntry entry)
@@ -101,6 +83,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
 
     protected override SnapshotBuilder CreateSnapshotBuilder(in SnapshotBuilderContext context)
     {
+        //Console.WriteLine("Building snapshot");
         return new SimpleSnapshotBuilder(context);
     }
 }
