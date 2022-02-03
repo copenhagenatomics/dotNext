@@ -2,8 +2,6 @@
 using DotNext.IO;
 using DotNext.Net.Cluster.Consensus.Raft;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using static DotNext.Threading.AtomicInt64;
 
 namespace RaftNode;
 
@@ -27,6 +25,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
             => writer.WriteAsync(value, token);
     }
 
+    private int entriesApplied;
     private readonly object contentLock = new ();
     private BigStruct content;
     private readonly Stopwatch timeTo1kValues = new();
@@ -87,9 +86,10 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
         var value = await entry.ToTypeAsync<BigStruct, LogEntry>().ConfigureAwait(false);
         lock (contentLock)
             content = value;
-        if (value.Field1 % 1000 == 0)
+        var newEntryNumber = Interlocked.Increment(ref entriesApplied);
+        if (newEntryNumber % 1000 == 0)
         {
-            Console.WriteLine($"Accepting value {value.Field1} - time since last 1k value: {timeTo1kValues.Elapsed}");
+            Console.WriteLine($"Accepting entry number {newEntryNumber} - time since last 1k value: {timeTo1kValues.Elapsed}");
             timeTo1kValues.Restart();
         }
     }
@@ -99,7 +99,6 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
 
     protected override SnapshotBuilder CreateSnapshotBuilder(in SnapshotBuilderContext context)
     {
-        //Console.WriteLine("Building snapshot");
         return new SimpleSnapshotBuilder(context);
     }
 }
