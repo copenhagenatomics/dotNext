@@ -122,6 +122,7 @@ static Task UseTcpTransport(int port, string? persistentStorage, bool useSsl)
     var configuration = new RaftCluster.TcpConfiguration(GetNodeEndpoint(persistentStorage ?? throw new NotSupportedException("missing persistentStorage")))
     {
         RequestTimeout = TimeSpan.FromMilliseconds(140),
+        ConnectTimeout = TimeSpan.FromMilliseconds(5),
         LowerElectionTimeout = 150,
         UpperElectionTimeout = 300,
         TransmissionBlockSize = 4096,

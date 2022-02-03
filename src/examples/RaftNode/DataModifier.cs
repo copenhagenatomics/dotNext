@@ -31,16 +31,19 @@ internal sealed class DataModifier : BackgroundService
                 var linkedToken = source.Token;
                 try
                 {
-                    var tasks = new List<Task<bool>>(16);
-                    for (int i = 1; i <= 16; i++)
+                    for (int i = 1; i <= 15; i++)
                     {
                         var entry = new BigLogEntry { Content = new BigStruct() { Field1 = oldValue + i }, Term = cluster.Term };
-                        tasks.Add(cluster.ReplicateAsync(entry, linkedToken));
+                        await cluster.AuditTrail.AppendAsync(entry, linkedToken).ConfigureAwait(false);
                     }
 
-                    var responses = await Task.WhenAll(tasks);
-                    if (responses.Contains(false))
-                        Console.WriteLine($"failed to replicate {responses.Count(r => !r)} entries");
+                    var lastEntry = new BigLogEntry { Content = new BigStruct() { Field1 = oldValue + 16 }, Term = cluster.Term };
+                    var lastIndex = await cluster.AuditTrail.AppendAsync(lastEntry, linkedToken).ConfigureAwait(false);
+
+                    await cluster.ForceReplicationAsync(linkedToken).ConfigureAwait(false);
+                    await cluster.AuditTrail.WaitForCommitAsync(lastIndex, linkedToken).ConfigureAwait(false);
+                    if (cluster.AuditTrail.Term != lastEntry.Term)
+                        Console.WriteLine($"failed to replicate last entry");
                 }
                 catch (Exception e)
                 {

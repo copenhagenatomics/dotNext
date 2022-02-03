@@ -48,6 +48,9 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
             BufferSize = 4096 * 2,
             InitialPartitionSize = 50 * 8,
             CompactionMode = CompactionMode.Sequential,//sequential is the default
+            WriteMode = WriteMode.AutoFlush,
+            MaxConcurrentReads = 3,
+            CacheEvictionPolicy = LogEntryCacheEvictionPolicy.OnSnapshot,
             WriteCounter = new("WAL.Writes", source),
             ReadCounter = new("WAL.Reads", source),
             CommitCounter = new("WAL.Commits", source),
@@ -96,7 +99,7 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
 
     protected override SnapshotBuilder CreateSnapshotBuilder(in SnapshotBuilderContext context)
     {
-        Console.WriteLine("Building snapshot");
+        //Console.WriteLine("Building snapshot");
         return new SimpleSnapshotBuilder(context);
     }
 }
