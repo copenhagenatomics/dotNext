@@ -5,13 +5,13 @@ using System.Diagnostics;
 
 namespace RaftNode;
 
-internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier<BigStruct>
+internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier<byte[]>
 {
     internal const string LogLocation = "logLocation";
 
     private sealed class SimpleSnapshotBuilder : IncrementalSnapshotBuilder
     {
-        private BigStruct value;
+        private byte[] value = Array.Empty<byte>();
 
         public SimpleSnapshotBuilder(in SnapshotBuilderContext context)
             : base(context)
@@ -19,15 +19,15 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
         }
 
         protected override async ValueTask ApplyAsync(LogEntry entry)
-            => value = await entry.ToTypeAsync<BigStruct, LogEntry>().ConfigureAwait(false);
+            => value = await entry.ToByteArrayAsync().ConfigureAwait(false);
 
         public override ValueTask WriteToAsync<TWriter>(TWriter writer, CancellationToken token)
-            => writer.WriteAsync(value, token);
+            => writer.WriteAsync(value, null, token);
     }
 
     private int entriesApplied;
     private readonly object contentLock = new ();
-    private BigStruct content;
+    private byte[] content = Array.Empty<byte>();
     private readonly Stopwatch timeTo1kValues = new();
 
     public SimplePersistentState(string path, AppEventSource source)
@@ -78,14 +78,14 @@ internal sealed class SimplePersistentState : MemoryBasedStateMachine, ISupplier
         return result;
     }
 
-    BigStruct ISupplier<BigStruct>.Invoke() 
+    byte[] ISupplier<byte[]>.Invoke() 
     { 
         lock (contentLock) return content; 
     }
 
     private async ValueTask UpdateValue(LogEntry entry)
     {
-        var value = await entry.ToTypeAsync<BigStruct, LogEntry>().ConfigureAwait(false);
+        var value = await entry.ToByteArrayAsync().ConfigureAwait(false);
         lock (contentLock)
             content = value;
         var newEntryNumber = Interlocked.Increment(ref entriesApplied);
